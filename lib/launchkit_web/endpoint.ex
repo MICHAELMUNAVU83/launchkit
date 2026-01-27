@@ -25,6 +25,12 @@ defmodule LaunchkitWeb.Endpoint do
     gzip: false,
     only: LaunchkitWeb.static_paths()
 
+  # Serve uploaded images
+  plug Plug.Static,
+    at: "/uploads",
+    from: {:launchkit, "priv/uploads"},
+    gzip: false
+
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.
   if code_reloading? do

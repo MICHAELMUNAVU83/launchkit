@@ -3,7 +3,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
   Multi-step asset generation flow:
   1. Analyze website
   2. Review brand analysis
-  3. Generate assets (headlines, images, videos)
+  3. Generate assets (headlines, images)
   4. Export
   """
   use LaunchkitWeb, :live_view
@@ -11,10 +11,11 @@ defmodule LaunchkitWeb.DashboardLive.New do
   alias Launchkit.WebScraper
   alias Launchkit.Assets
   alias Launchkit.Campaigns
+  alias Launchkit.AIVisibility
   import Ecto.Query
   alias Launchkit.Repo
 
-  @steps [:analyzing, :review, :generate, :export]
+  @steps [:analyzing, :review, :generate, :ai_visibility, :export]
 
   def mount(params, _session, socket) do
     url = params["url"]
@@ -47,11 +48,16 @@ defmodule LaunchkitWeb.DashboardLive.New do
       |> assign(:long_headlines, [])
       |> assign(:descriptions, [])
       |> assign(:images, [])
-      |> assign(:videos, [])
       # Loading states
       |> assign(:generating_headlines, false)
       |> assign(:generating_images, false)
-      |> assign(:generating_videos, false)
+      # AI Visibility
+      |> assign(:ai_visibility, nil)
+      |> assign(:analyzing_visibility, false)
+      |> assign(:blog_topics, [])
+      |> assign(:generating_blog, false)
+      |> assign(:selected_blog_topic, nil)
+      |> assign(:generated_blog, nil)
 
     # Check for existing website or start analysis if URL provided
     if url && url != "" do
@@ -113,15 +119,26 @@ defmodule LaunchkitWeb.DashboardLive.New do
               default_step
             end
 
-          {:ok,
-           socket
-           |> assign(:analysis, analysis)
-           |> assign(:website_id, website_id)
-           |> assign(:headlines, headlines)
-           |> assign(:long_headlines, long_headlines)
-           |> assign(:descriptions, descriptions)
-           |> assign(:images, images)
-           |> assign(:current_step, current_step)}
+          socket =
+            socket
+            |> assign(:analysis, analysis)
+            |> assign(:website_id, website_id)
+            |> assign(:headlines, headlines)
+            |> assign(:long_headlines, long_headlines)
+            |> assign(:descriptions, descriptions)
+            |> assign(:images, images)
+            |> assign(:current_step, current_step)
+            |> assign(:ai_visibility, nil)
+            |> assign(:analyzing_visibility, false)
+            |> assign(:blog_topics, [])
+            |> assign(:generating_blog, false)
+            |> assign(:selected_blog_topic, nil)
+            |> assign(:generated_blog, nil)
+
+          # Scroll to top if we're loading a specific step from URL
+          socket = if step_param, do: push_event(socket, "scroll-to-top", %{}), else: socket
+
+          {:ok, socket}
 
         _ ->
           # No saved analysis, start fresh analysis
@@ -131,6 +148,10 @@ defmodule LaunchkitWeb.DashboardLive.New do
     else
       {:ok, socket}
     end
+  end
+
+  def handle_params(_params, _url, socket) do
+    {:noreply, socket}
   end
 
   def render(assigns) do
@@ -153,7 +174,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
             </div>
             <span class="text-xl font-semibold tracking-tight">LaunchKit</span>
           </.link>
-
+          
     <!-- Progress Steps -->
           <div class="hidden md:flex items-center gap-2">
             <%= for {step, idx} <- Enum.with_index(@steps) do %>
@@ -181,9 +202,9 @@ defmodule LaunchkitWeb.DashboardLive.New do
           </div>
         </div>
       </header>
-
+      
     <!-- Main Content -->
-      <main class="max-w-6xl mx-auto px-6 py-8">
+      <main class="max-w-6xl mx-auto px-6 py-8" phx-hook="ScrollToTop" id="main-content">
         <%= case @current_step do %>
           <% :analyzing -> %>
             <.analyzing_step url={@url} error={@error} />
@@ -197,18 +218,27 @@ defmodule LaunchkitWeb.DashboardLive.New do
               long_headlines={@long_headlines}
               descriptions={@descriptions}
               images={@images}
-              videos={@videos}
               generating_headlines={@generating_headlines}
               generating_images={@generating_images}
-              generating_videos={@generating_videos}
             />
           <% :export -> %>
             <.export_step
+              url={@url}
               headlines={@headlines}
               long_headlines={@long_headlines}
               descriptions={@descriptions}
               images={@images}
-              videos={@videos}
+            />
+          <% :ai_visibility -> %>
+            <.ai_visibility_step
+              url={@url}
+              analysis={@analysis}
+              ai_visibility={@ai_visibility}
+              analyzing_visibility={@analyzing_visibility}
+              blog_topics={@blog_topics}
+              generating_blog={@generating_blog}
+              selected_blog_topic={@selected_blog_topic}
+              generated_blog={@generated_blog}
             />
         <% end %>
       </main>
@@ -305,7 +335,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
           We've analyzed your website. Review the insights before generating assets.
         </p>
       </div>
-
+      
     <!-- Back Button (if not first step) -->
       <div class="mb-6">
         <button
@@ -319,7 +349,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
           Back to Analysis
         </button>
       </div>
-
+      
     <!-- Brand Summary Card -->
       <.collapsible_section
         id="brand_summary"
@@ -406,7 +436,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
           </div>
         </div>
       </.collapsible_section>
-
+      
     <!-- Messaging Pillars -->
       <.collapsible_section
         id="messaging_pillars"
@@ -451,7 +481,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
           <% end %>
         </div>
       </.collapsible_section>
-
+      
     <!-- Target Audience -->
       <.collapsible_section
         id="target_audience"
@@ -500,7 +530,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
           </div>
         <% end %>
       </.collapsible_section>
-
+      
     <!-- Calls to Action -->
       <%= if cta = get_in(@analysis, ["calls_to_action"]) do %>
         <.collapsible_section
@@ -546,7 +576,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
           </div>
         </.collapsible_section>
       <% end %>
-
+      
     <!-- Headline Ingredients -->
       <%= if ingredients = get_in(@analysis, ["headline_ingredients"]) do %>
         <.collapsible_section
@@ -638,7 +668,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
           </div>
         </.collapsible_section>
       <% end %>
-
+      
     <!-- Competitive Advantages -->
       <%= if advantages = get_in(@analysis, ["competitive_advantages"]) do %>
         <.collapsible_section
@@ -658,7 +688,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
           </div>
         </.collapsible_section>
       <% end %>
-
+      
     <!-- Visual Direction -->
       <%= if visual = get_in(@analysis, ["visual_direction"]) do %>
         <.collapsible_section
@@ -739,7 +769,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
           </div>
         </.collapsible_section>
       <% end %>
-
+      
     <!-- Video Direction -->
       <%= if video = get_in(@analysis, ["video_direction"]) do %>
         <.collapsible_section
@@ -796,7 +826,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
           </div>
         </.collapsible_section>
       <% end %>
-
+      
     <!-- SEO Keywords -->
       <%= if seo = get_in(@analysis, ["seo_keywords"]) do %>
         <.collapsible_section
@@ -848,7 +878,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
           </div>
         </.collapsible_section>
       <% end %>
-
+      
     <!-- Continue Button -->
       <div class="flex justify-center gap-4 mt-8 mb-4">
         <button
@@ -884,9 +914,9 @@ defmodule LaunchkitWeb.DashboardLive.New do
     <div>
       <div class="text-center mb-8">
         <h1 class="text-3xl font-semibold mb-2">Generate Your Assets</h1>
-        <p class="text-[#525252]">Generate headlines, images, and videos for your campaign.</p>
+        <p class="text-[#525252]">Generate headlines and images for your campaign.</p>
       </div>
-
+      
     <!-- Back Button -->
       <div class="mb-6 flex justify-center">
         <button
@@ -900,7 +930,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
           Back to Review
         </button>
       </div>
-
+      
     <!-- Tabs -->
       <div class="flex justify-center mb-10">
         <div class="inline-flex bg-gray-100 rounded-lg p-1.5 gap-1">
@@ -926,20 +956,9 @@ defmodule LaunchkitWeb.DashboardLive.New do
           >
             Images
           </button>
-          <button
-            phx-click="switch_tab"
-            phx-value-tab="videos"
-            class={[
-              "px-6 py-2.5 rounded-md text-sm font-medium transition-all",
-              @active_tab == :videos && "bg-white text-gray-900 shadow-sm",
-              @active_tab != :videos && "text-gray-600 hover:text-gray-900"
-            ]}
-          >
-            Videos
-          </button>
         </div>
       </div>
-
+      
     <!-- Tab Content -->
       <%= case @active_tab do %>
         <% :headlines -> %>
@@ -952,17 +971,10 @@ defmodule LaunchkitWeb.DashboardLive.New do
           />
         <% :images -> %>
           <.images_tab images={@images} generating={@generating_images} analysis={@analysis} />
-        <% :videos -> %>
-          <.videos_tab
-            videos={@videos}
-            images={@images}
-            generating={@generating_videos}
-            analysis={@analysis}
-          />
       <% end %>
-
+      
     <!-- Continue to Export -->
-      <%= if has_assets?(@headlines, @images, @videos) do %>
+      <%= if has_assets?(@headlines, @images) do %>
         <div class="flex justify-center gap-4 mt-8">
           <button
             phx-click="go_to_step"
@@ -981,10 +993,11 @@ defmodule LaunchkitWeb.DashboardLive.New do
             Back to Review
           </button>
           <button
-            phx-click="continue_to_export"
+            phx-click="go_to_step"
+            phx-value-step="ai_visibility"
             class="bg-black text-white px-8 py-3 rounded-lg font-medium hover:bg-gray-900 transition-colors flex items-center gap-2 shadow-sm"
           >
-            Continue to Export
+            Check AI Visibility
             <svg
               class="w-5 h-5"
               fill="none"
@@ -1129,7 +1142,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
             <% end %>
           </div>
         </div>
-
+        
     <!-- Long Headlines -->
         <div class="bg-white border border-gray-200 rounded-xl p-6 mb-6 shadow-sm">
           <div class="flex items-center justify-between mb-5">
@@ -1183,7 +1196,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
             <% end %>
           </div>
         </div>
-
+        
     <!-- Descriptions -->
         <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <div class="flex items-center justify-between mb-5">
@@ -1369,35 +1382,110 @@ defmodule LaunchkitWeb.DashboardLive.New do
     """
   end
 
-  defp videos_tab(assigns) do
+  defp export_step(assigns) do
+    url = Map.get(assigns, :url) || ""
+    assigns = assign(assigns, :share_url, get_share_url(url))
+
     ~H"""
     <div class="max-w-4xl mx-auto">
-      <!-- Generate Button -->
-      <div class="flex justify-center mb-8">
+      <!-- Back Button -->
+      <div class="mb-6">
         <button
-          phx-click="generate_videos"
-          disabled={@generating or @images == []}
-          class={[
-            "px-6 py-3 rounded-full font-medium flex items-center gap-2 transition-colors",
-            (@generating or @images == []) && "bg-[#e5e5e5] text-[#a3a3a3] cursor-not-allowed",
-            !@generating and @images != [] && "bg-[#0d0d0d] text-white hover:bg-[#262626]"
-          ]}
+          phx-click="go_to_step"
+          phx-value-step="ai_visibility"
+          class="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
         >
-          <%= if @generating do %>
-            <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
-              </circle>
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-              >
-              </path>
-            </svg>
-            Generating Videos...
-          <% else %>
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+          </svg>
+          Back to AI Visibility
+        </button>
+      </div>
+
+      <.assets_export_tab
+        share_url={@share_url}
+        images={@images}
+        headlines={@headlines}
+        long_headlines={@long_headlines}
+        descriptions={@descriptions}
+      />
+    </div>
+    """
+  end
+
+  defp ai_visibility_step(assigns) do
+    ~H"""
+    <div class="max-w-4xl mx-auto">
+      <!-- Back Button -->
+      <div class="mb-6">
+        <button
+          phx-click="go_to_step"
+          phx-value-step="export"
+          class="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+        >
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+          </svg>
+          Back to Export
+        </button>
+      </div>
+
+      <.ai_visibility_tab
+        url={@url}
+        analysis={@analysis}
+        ai_visibility={@ai_visibility}
+        analyzing_visibility={@analyzing_visibility}
+        blog_topics={@blog_topics}
+        generating_blog={@generating_blog}
+        selected_blog_topic={@selected_blog_topic}
+        generated_blog={@generated_blog}
+      />
+      
+    <!-- Continue to Export -->
+      <div class="flex justify-center mt-8">
+        <button
+          phx-click="go_to_step"
+          phx-value-step="export"
+          class="px-8 py-3 bg-[#0d0d0d] text-white rounded-lg font-medium hover:bg-[#262626] transition-colors flex items-center gap-2"
+        >
+          Continue to Export
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+    """
+  end
+
+  defp assets_export_tab(assigns) do
+    ~H"""
+    <div>
+      <!-- Share Link Section -->
+      <div class="bg-white border border-gray-200 rounded-xl p-6 mb-8 shadow-sm">
+        <h2 class="text-lg font-semibold text-gray-900 mb-3">Share This Page</h2>
+        <div class="flex items-center gap-3">
+          <input
+            type="text"
+            readonly
+            value={@share_url}
+            id="share-url-input"
+            class="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300"
+          />
+          <button
+            phx-click="copy_text"
+            phx-value-text={@share_url}
+            phx-hook="CopyToClipboard"
+            id="copy-share-url"
+            class="px-4 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors flex items-center gap-2"
+            title="Copy share link"
+          >
             <svg
-              class="w-5 h-5"
+              class="w-4 h-4"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -1406,31 +1494,454 @@ defmodule LaunchkitWeb.DashboardLive.New do
               <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
-                d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"
+                d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"
               />
             </svg>
-            Generate Videos from Images
-          <% end %>
-        </button>
+            Copy Link
+          </button>
+        </div>
       </div>
-
-      <%= if @images == [] do %>
-        <div class="text-center py-8 mb-8 bg-amber-50 border border-amber-200 rounded-xl">
-          <p class="text-amber-700 text-sm">Generate images first to create videos from them</p>
+      
+    <!-- Images Section -->
+      <%= if @images != [] do %>
+        <div class="bg-white border border-gray-200 rounded-xl p-6 mb-8 shadow-sm">
+          <h2 class="text-lg font-semibold text-gray-900 mb-4">Images</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <%= for image <- @images do %>
+              <div class="border border-gray-200 rounded-lg overflow-hidden">
+                <div class="aspect-video bg-gray-100 relative">
+                  <%= if image.status == :completed do %>
+                    <img src={image.url} alt="Generated image" class="w-full h-full object-cover" />
+                  <% else %>
+                    <div class="absolute inset-0 flex items-center justify-center bg-gray-100">
+                      <div class="text-center text-gray-400">
+                        <svg class="w-8 h-8 mx-auto mb-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle
+                            class="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            stroke-width="4"
+                          >
+                          </circle>
+                          <path
+                            class="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                          >
+                          </path>
+                        </svg>
+                        <p class="text-xs">Generating...</p>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+                <div class="p-3 bg-white flex items-center justify-between">
+                  <span class="text-xs text-gray-500">{image.aspect_ratio || "N/A"}</span>
+                  <%= if image.status == :completed do %>
+                    <a
+                      href={image.url}
+                      download
+                      class="px-3 py-1.5 bg-gray-900 text-white text-xs font-medium rounded hover:bg-gray-800 transition-colors flex items-center gap-1.5"
+                    >
+                      <svg
+                        class="w-3.5 h-3.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
+                        />
+                      </svg>
+                      Download
+                    </a>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
         </div>
       <% end %>
+      
+    <!-- Headlines and Descriptions Section -->
+      <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+        <h2 class="text-lg font-semibold text-gray-900 mb-6">Headlines & Descriptions</h2>
+        
+    <!-- Short Headlines -->
+        <%= if @headlines != [] do %>
+          <div class="mb-6">
+            <h3 class="text-sm font-medium text-gray-700 mb-3">Short Headlines</h3>
+            <div class="space-y-2">
+              <%= for {headline, idx} <- Enum.with_index(@headlines) do %>
+                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group">
+                  <span class="text-xs font-medium text-gray-400 w-6 flex-shrink-0">{idx + 1}</span>
+                  <span class="flex-1 text-sm text-gray-900">{headline.text}</span>
+                  <button
+                    id={"export-copy-headline-#{idx}"}
+                    phx-click="copy_text"
+                    phx-value-text={headline.text}
+                    phx-hook="CopyToClipboard"
+                    class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+                    title="Copy to clipboard"
+                  >
+                    <svg
+                      class="w-3.5 h-3.5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"
+                      />
+                    </svg>
+                    Copy
+                  </button>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+        
+    <!-- Long Headlines -->
+        <%= if @long_headlines != [] do %>
+          <div class="mb-6">
+            <h3 class="text-sm font-medium text-gray-700 mb-3">Long Headlines</h3>
+            <div class="space-y-2">
+              <%= for {headline, idx} <- Enum.with_index(@long_headlines) do %>
+                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group">
+                  <span class="text-xs font-medium text-gray-400 w-6 flex-shrink-0">{idx + 1}</span>
+                  <span class="flex-1 text-sm text-gray-900">{headline.text}</span>
+                  <button
+                    id={"export-copy-long-headline-#{idx}"}
+                    phx-click="copy_text"
+                    phx-value-text={headline.text}
+                    phx-hook="CopyToClipboard"
+                    class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+                    title="Copy to clipboard"
+                  >
+                    <svg
+                      class="w-3.5 h-3.5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"
+                      />
+                    </svg>
+                    Copy
+                  </button>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+        
+    <!-- Descriptions -->
+        <%= if @descriptions != [] do %>
+          <div>
+            <h3 class="text-sm font-medium text-gray-700 mb-3">Descriptions</h3>
+            <div class="space-y-2">
+              <%= for {desc, idx} <- Enum.with_index(@descriptions) do %>
+                <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group">
+                  <span class="text-xs font-medium text-gray-400 w-6 flex-shrink-0 pt-1">
+                    {idx + 1}
+                  </span>
+                  <p class="flex-1 text-sm text-gray-900">{desc.text}</p>
+                  <button
+                    id={"export-copy-description-#{idx}"}
+                    phx-click="copy_text"
+                    phx-value-text={desc.text}
+                    phx-hook="CopyToClipboard"
+                    class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-50 transition-colors flex items-center gap-1.5 flex-shrink-0"
+                    title="Copy to clipboard"
+                  >
+                    <svg
+                      class="w-3.5 h-3.5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"
+                      />
+                    </svg>
+                    Copy
+                  </button>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+    """
+  end
 
-      <%= if @videos != [] do %>
-        <div class="grid md:grid-cols-2 gap-4">
-          <%= for video <- @videos do %>
-            <div class="bg-white border border-[#e5e5e5] rounded-2xl overflow-hidden">
-              <div class="aspect-video bg-[#0d0d0d] relative">
-                <%= if video.status == :completed do %>
-                  <video src={video.url} controls class="w-full h-full object-cover" />
-                <% else %>
-                  <div class="absolute inset-0 flex items-center justify-center">
-                    <div class="text-center text-white">
-                      <svg class="w-8 h-8 mx-auto mb-2 animate-spin" fill="none" viewBox="0 0 24 24">
+  defp ai_visibility_tab(assigns) do
+    ~H"""
+    <div>
+      <!-- Analyze Button -->
+      <%= if @ai_visibility == nil do %>
+        <div class="bg-white border border-gray-200 rounded-xl p-8 mb-8 shadow-sm text-center">
+          <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg
+              class="w-8 h-8 text-blue-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"
+              />
+            </svg>
+          </div>
+          <h2 class="text-2xl font-semibold text-gray-900 mb-2">AI Search Visibility</h2>
+          <p class="text-gray-600 mb-6">
+            Analyze how well your business appears in AI search results and get recommendations to improve visibility.
+          </p>
+          <button
+            phx-click="analyze_ai_visibility"
+            disabled={@analyzing_visibility}
+            class={[
+              "px-8 py-3 rounded-lg font-medium transition-all flex items-center gap-2 mx-auto",
+              @analyzing_visibility && "bg-gray-100 text-gray-400 cursor-not-allowed",
+              !@analyzing_visibility && "bg-blue-600 text-white hover:bg-blue-700 shadow-sm"
+            ]}
+          >
+            <%= if @analyzing_visibility do %>
+              <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                >
+                </circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                >
+                </path>
+              </svg>
+              Analyzing...
+            <% else %>
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"
+                />
+              </svg>
+              Analyze AI Visibility
+            <% end %>
+          </button>
+        </div>
+      <% else %>
+        <!-- Score Display -->
+        <div class="bg-white border border-gray-200 rounded-xl p-6 mb-8 shadow-sm">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-semibold text-gray-900">AI Visibility Score</h2>
+            <button
+              phx-click="analyze_ai_visibility"
+              disabled={@analyzing_visibility}
+              class="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
+            >
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"
+                />
+              </svg>
+              Refresh
+            </button>
+          </div>
+          
+    <!-- Overall Score -->
+          <div class="text-center mb-8">
+            <div
+              class="inline-flex items-center justify-center w-32 h-32 rounded-full border-8 border-gray-100 mb-4"
+              style={"border-color: #{get_score_color(@ai_visibility[:overall_score] || @ai_visibility.overall_score)}"}
+            >
+              <div class="text-center">
+                <div
+                  class="text-4xl font-bold"
+                  style={"color: #{get_score_color(@ai_visibility[:overall_score] || @ai_visibility.overall_score)}"}
+                >
+                  {@ai_visibility[:overall_score] || @ai_visibility.overall_score}
+                </div>
+                <div class="text-xs text-gray-500 mt-1">/ 100</div>
+              </div>
+            </div>
+            <p class="text-sm text-gray-600">
+              {get_score_label(@ai_visibility[:overall_score] || @ai_visibility.overall_score)}
+            </p>
+          </div>
+          
+    <!-- Individual Scores -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <% scores = @ai_visibility[:scores] || @ai_visibility.scores %>
+            <div class="text-center p-4 bg-gray-50 rounded-lg">
+              <div class="text-2xl font-semibold text-gray-900">
+                {scores[:presence] || scores.presence}
+              </div>
+              <div class="text-xs text-gray-600 mt-1">Presence</div>
+            </div>
+            <div class="text-center p-4 bg-gray-50 rounded-lg">
+              <div class="text-2xl font-semibold text-gray-900">
+                {scores[:completeness] || scores.completeness}
+              </div>
+              <div class="text-xs text-gray-600 mt-1">Completeness</div>
+            </div>
+            <div class="text-center p-4 bg-gray-50 rounded-lg">
+              <div class="text-2xl font-semibold text-gray-900">
+                {scores[:recency] || scores.recency}
+              </div>
+              <div class="text-xs text-gray-600 mt-1">Recency</div>
+            </div>
+            <div class="text-center p-4 bg-gray-50 rounded-lg">
+              <div class="text-2xl font-semibold text-gray-900">
+                {scores[:authority] || scores.authority}
+              </div>
+              <div class="text-xs text-gray-600 mt-1">Authority</div>
+            </div>
+          </div>
+        </div>
+        
+    <!-- Recommendations -->
+        <%= if recommendations = @ai_visibility.recommendations do %>
+          <div class="bg-white border border-gray-200 rounded-xl p-6 mb-8 shadow-sm">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Recommendations</h3>
+
+            <%= if priority = Map.get(recommendations, "priority_recommendations") do %>
+              <div class="space-y-4 mb-6">
+                <%= for rec <- priority do %>
+                  <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div class="flex items-start justify-between mb-2">
+                      <h4 class="font-medium text-gray-900">{rec["title"]}</h4>
+                      <div class="flex gap-2">
+                        <span class={"px-2 py-1 text-xs font-medium rounded #{get_impact_class(rec["impact"])}"}>
+                          {rec["impact"]} impact
+                        </span>
+                        <span class={"px-2 py-1 text-xs font-medium rounded #{get_effort_class(rec["effort"])}"}>
+                          {rec["effort"]} effort
+                        </span>
+                      </div>
+                    </div>
+                    <p class="text-sm text-gray-600">{rec["description"]}</p>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+
+            <%= if quick_wins = Map.get(recommendations, "quick_wins") do %>
+              <div class="mb-6">
+                <h4 class="font-medium text-gray-900 mb-3">Quick Wins</h4>
+                <ul class="space-y-2">
+                  <%= for win <- quick_wins do %>
+                    <li class="flex items-start gap-2 text-sm text-gray-600">
+                      <svg
+                        class="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <span>{win}</span>
+                    </li>
+                  <% end %>
+                </ul>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+        
+    <!-- Blog Topics -->
+        <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">Blog Topics to Improve Visibility</h3>
+            <%= if @blog_topics == [] do %>
+              <button
+                phx-click="generate_blog_topics"
+                disabled={@generating_blog}
+                class="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Generate Topics
+              </button>
+            <% end %>
+          </div>
+
+          <%= if @blog_topics != [] do %>
+            <div class="space-y-3 mb-6">
+              <%= for {topic, idx} <- Enum.with_index(@blog_topics) do %>
+                <div class="p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors">
+                  <div class="flex items-start justify-between mb-2">
+                    <h4 class="font-medium text-gray-900">
+                      {topic["title"] || topic[:title] || topic["topic"] || topic[:topic] ||
+                        "Untitled Topic"}
+                    </h4>
+                    <span class={"px-2 py-1 text-xs font-medium rounded #{get_priority_class(topic["estimated_impact"] || topic[:estimated_impact] || topic["priority"] || topic[:priority])}"}>
+                      {topic["estimated_impact"] || topic[:estimated_impact] || topic["priority"] ||
+                        topic[:priority] || "medium"} impact
+                    </span>
+                  </div>
+                  <%= if desc = topic["description"] || topic[:description] do %>
+                    <p class="text-sm text-gray-600 mb-2">{desc}</p>
+                  <% end %>
+                  <%= if why = topic["why_it_helps"] || topic[:why_it_helps] || topic["reason"] || topic[:reason] do %>
+                    <p class="text-xs text-gray-500 mb-3">{why}</p>
+                  <% end %>
+                  <button
+                    phx-click="generate_blog_post"
+                    phx-value-topic-index={idx}
+                    disabled={@generating_blog}
+                    class={[
+                      "text-sm font-medium transition-all flex items-center gap-2",
+                      @generating_blog && "text-gray-400 cursor-not-allowed",
+                      !@generating_blog && "text-blue-600 hover:text-blue-700"
+                    ]}
+                  >
+                    <%= if @generating_blog && @selected_blog_topic && (@selected_blog_topic["title"] == topic["title"] || @selected_blog_topic[:title] == topic[:title] || @selected_blog_topic["topic"] == topic["topic"] || @selected_blog_topic[:topic] == topic[:topic]) do %>
+                      <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                         <circle
                           class="opacity-25"
                           cx="12"
@@ -1447,125 +1958,234 @@ defmodule LaunchkitWeb.DashboardLive.New do
                         >
                         </path>
                       </svg>
-                      <p class="text-sm opacity-75">Generating...</p>
-                    </div>
-                  </div>
-                <% end %>
-              </div>
-              <div class="p-3">
-                <p class="text-xs text-[#525252]">{video.duration_seconds}s • {video.aspect_ratio}</p>
+                      Generating...
+                    <% else %>
+                      Generate Blog Post →
+                    <% end %>
+                  </button>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-sm text-gray-500 text-center py-8">
+              Click "Generate Topics" to see blog post ideas that will improve your AI visibility.
+            </p>
+          <% end %>
+          
+    <!-- Generated Blog Post -->
+          <%= if @generating_blog && @selected_blog_topic do %>
+            <div class="mt-6 p-6 bg-gray-50 rounded-lg border border-gray-200">
+              <div class="flex items-center justify-center py-12">
+                <div class="text-center">
+                  <svg
+                    class="w-8 h-8 animate-spin text-blue-600 mx-auto mb-3"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      class="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      stroke-width="4"
+                    >
+                    </circle>
+                    <path
+                      class="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                    >
+                    </path>
+                  </svg>
+                  <p class="text-sm text-gray-600">Generating blog post...</p>
+                </div>
               </div>
             </div>
           <% end %>
-        </div>
-      <% else %>
-        <div class="text-center py-16 text-[#a3a3a3]">
-          <svg
-            class="w-12 h-12 mx-auto mb-4 opacity-50"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="1.5"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"
-            />
-          </svg>
-          <p>Click "Generate Videos" to create video ads</p>
+
+          <%= if @generated_blog && !@generating_blog do %>
+            <div class="mt-6 p-6 bg-gray-50 rounded-lg border border-gray-200">
+              <div class="flex items-center justify-between mb-4">
+                <h4 class="font-semibold text-gray-900">
+                  {@generated_blog["title"] || @generated_blog[:title] || "Blog Post"}
+                </h4>
+                <button
+                  id="copy-blog-content"
+                  phx-click="copy_text"
+                  phx-value-text={@generated_blog["content"]}
+                  phx-hook="CopyToClipboard"
+                  class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-50"
+                >
+                  Copy Content
+                </button>
+              </div>
+              <div class="prose prose-sm max-w-none text-gray-700">
+                {render_markdown(@generated_blog["content"] || @generated_blog[:content] || "")}
+              </div>
+              <%= if @generated_blog["content"] || @generated_blog[:content] do %>
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                  <div class="text-xs text-gray-500 space-y-1">
+                    <%= if keywords = @generated_blog["keywords"] || @generated_blog[:keywords] do %>
+                      <div>
+                        <span class="font-medium">Keywords:</span> {Enum.join(keywords, ", ")}
+                      </div>
+                    <% end %>
+                    <%= if meta = @generated_blog["meta_description"] || @generated_blog[:meta_description] do %>
+                      <div>
+                        <span class="font-medium">Meta Description:</span> {meta}
+                      </div>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
         </div>
       <% end %>
     </div>
     """
   end
 
-  defp export_step(assigns) do
-    ~H"""
-    <div class="max-w-3xl mx-auto">
-      <div class="text-center mb-8">
-        <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
-          <svg
-            class="w-8 h-8 text-emerald-600"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-        <h1 class="text-3xl font-semibold mb-2">Your Assets Are Ready!</h1>
-        <p class="text-[#525252]">Download your assets or export directly to Google Ads.</p>
-      </div>
+  # green
+  defp get_score_color(score) when score >= 80, do: "#10b981"
+  # amber
+  defp get_score_color(score) when score >= 60, do: "#f59e0b"
+  # orange
+  defp get_score_color(score) when score >= 40, do: "#f97316"
+  # red
+  defp get_score_color(_score), do: "#ef4444"
 
-    <!-- Back Button -->
-      <div class="mb-6 flex justify-center">
-        <button
-          phx-click="go_to_step"
-          phx-value-step="generate"
-          class="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
-        >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-          </svg>
-          Back to Generate
-        </button>
-      </div>
+  defp get_score_label(score) when score >= 80, do: "Excellent AI Visibility"
+  defp get_score_label(score) when score >= 60, do: "Good AI Visibility"
+  defp get_score_label(score) when score >= 40, do: "Fair AI Visibility"
+  defp get_score_label(_score), do: "Poor AI Visibility - Needs Improvement"
 
-    <!-- Summary -->
-      <div class="bg-white border border-[#e5e5e5] rounded-2xl p-6 mb-8">
-        <h2 class="text-lg font-semibold mb-4">Asset Summary</h2>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div class="text-center p-4 bg-[#fafaf9] rounded-xl">
-            <div class="text-2xl font-semibold">{length(@headlines)}</div>
-            <div class="text-sm text-[#525252]">Headlines</div>
-          </div>
-          <div class="text-center p-4 bg-[#fafaf9] rounded-xl">
-            <div class="text-2xl font-semibold">{length(@long_headlines)}</div>
-            <div class="text-sm text-[#525252]">Long Headlines</div>
-          </div>
-          <div class="text-center p-4 bg-[#fafaf9] rounded-xl">
-            <div class="text-2xl font-semibold">{length(@descriptions)}</div>
-            <div class="text-sm text-[#525252]">Descriptions</div>
-          </div>
-          <div class="text-center p-4 bg-[#fafaf9] rounded-xl">
-            <div class="text-2xl font-semibold">{length(@images)}</div>
-            <div class="text-sm text-[#525252]">Images</div>
-          </div>
-        </div>
-      </div>
+  defp get_impact_class("high"), do: "bg-red-100 text-red-700"
+  defp get_impact_class("medium"), do: "bg-yellow-100 text-yellow-700"
+  defp get_impact_class(_), do: "bg-gray-100 text-gray-700"
 
-    <!-- Export Options -->
-      <div class="flex flex-col sm:flex-row gap-4 justify-center">
-        <button
-          phx-click="download_all"
-          class="px-8 py-3 bg-[#0d0d0d] text-white rounded-full font-medium hover:bg-[#262626] transition-colors flex items-center justify-center gap-2"
-        >
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
-            />
-          </svg>
-          Download All
-        </button>
-        <button
-          phx-click="export_to_google"
-          class="px-8 py-3 bg-white border border-[#e5e5e5] text-[#0d0d0d] rounded-full font-medium hover:bg-[#fafaf9] transition-colors flex items-center justify-center gap-2"
-        >
-          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-          </svg>
-          Export to Google Ads
-        </button>
-      </div>
-    </div>
-    """
+  defp get_effort_class("high"), do: "bg-blue-100 text-blue-700"
+  defp get_effort_class("medium"), do: "bg-purple-100 text-purple-700"
+  defp get_effort_class(_), do: "bg-gray-100 text-gray-700"
+
+  defp get_priority_class("high"), do: "bg-red-100 text-red-700"
+  defp get_priority_class("medium"), do: "bg-yellow-100 text-yellow-700"
+  defp get_priority_class(_), do: "bg-gray-100 text-gray-700"
+
+  # Simple markdown renderer - converts markdown to HTML
+  defp render_markdown(text) when is_binary(text) and text != "" do
+    import Phoenix.HTML
+
+    lines = String.split(text, "\n")
+
+    {html_parts, in_list} =
+      lines
+      |> Enum.reduce({[], false}, fn line, {acc, in_list} ->
+        {rendered, new_in_list} = render_markdown_line(line, in_list)
+        {[rendered | acc], new_in_list}
+      end)
+
+    # Close any open list
+    final_html =
+      if in_list do
+        Enum.reverse(html_parts) |> Enum.join() |> Kernel.<>("</ul>")
+      else
+        Enum.reverse(html_parts) |> Enum.join()
+      end
+
+    raw(final_html)
+  end
+
+  defp render_markdown(""), do: raw("")
+  defp render_markdown(nil), do: raw("")
+
+  defp render_markdown_line(line, in_list) do
+    trimmed = String.trim(line)
+
+    cond do
+      trimmed == "" ->
+        if in_list, do: {"</ul>", false}, else: {"<br>", false}
+
+      String.starts_with?(trimmed, "#### ") ->
+        content = escape_html(String.slice(trimmed, 5..-1))
+
+        html =
+          if in_list,
+            do: "</ul><h4 class='text-base font-semibold mb-2 mt-3'>#{content}</h4>",
+            else: "<h4 class='text-base font-semibold mb-2 mt-3'>#{content}</h4>"
+
+        {html, false}
+
+      String.starts_with?(trimmed, "### ") ->
+        content = escape_html(String.slice(trimmed, 4..-1))
+
+        html =
+          if in_list,
+            do: "</ul><h3 class='text-lg font-semibold mb-2 mt-4'>#{content}</h3>",
+            else: "<h3 class='text-lg font-semibold mb-2 mt-4'>#{content}</h3>"
+
+        {html, false}
+
+      String.starts_with?(trimmed, "## ") ->
+        content = escape_html(String.slice(trimmed, 3..-1))
+
+        html =
+          if in_list,
+            do: "</ul><h2 class='text-xl font-semibold mb-3 mt-5'>#{content}</h2>",
+            else: "<h2 class='text-xl font-semibold mb-3 mt-5'>#{content}</h2>"
+
+        {html, false}
+
+      String.starts_with?(trimmed, "# ") ->
+        content = escape_html(String.slice(trimmed, 2..-1))
+
+        html =
+          if in_list,
+            do: "</ul><h1 class='text-2xl font-bold mb-4 mt-6'>#{content}</h1>",
+            else: "<h1 class='text-2xl font-bold mb-4 mt-6'>#{content}</h1>"
+
+        {html, false}
+
+      String.starts_with?(trimmed, "- ") or String.starts_with?(trimmed, "* ") ->
+        content = escape_html(String.slice(trimmed, 2..-1))
+
+        html =
+          if in_list,
+            do: "<li class='mb-1'>#{content}</li>",
+            else: "<ul class='list-disc ml-6 mb-3'><li class='mb-1'>#{content}</li>"
+
+        {html, true}
+
+      true ->
+        content = escape_html(trimmed)
+
+        html =
+          if in_list,
+            do: "</ul><p class='mb-3 leading-relaxed'>#{content}</p>",
+            else: "<p class='mb-3 leading-relaxed'>#{content}</p>"
+
+        {html, false}
+    end
+  end
+
+  defp escape_html(text) do
+    text
+    |> String.replace("&", "&amp;")
+    |> String.replace("<", "&lt;")
+    |> String.replace(">", "&gt;")
+    |> String.replace("\"", "&quot;")
+    |> String.replace("'", "&#39;")
+  end
+
+  defp get_share_url(url) do
+    # Use JavaScript to get the current origin, or construct from endpoint config
+    # For now, we'll use a client-side approach via a data attribute
+    # The actual URL will be constructed in JavaScript
+    base_url = LaunchkitWeb.Endpoint.url()
+    path = "/dashboard/new"
+    params = URI.encode_query(%{"url" => url || "", "step" => "export"})
+    "#{base_url}#{path}?#{params}"
   end
 
   # ============================================================================
@@ -1612,7 +2232,8 @@ defmodule LaunchkitWeb.DashboardLive.New do
          socket
          |> assign(:analysis, analysis)
          |> assign(:website_id, website_id)
-         |> assign(:current_step, :review)}
+         |> assign(:current_step, :review)
+         |> push_event("scroll-to-top", %{})}
 
       {:error, reason} ->
         # Save website with error status (non-blocking)
@@ -1704,6 +2325,58 @@ defmodule LaunchkitWeb.DashboardLive.New do
      |> assign(:generating_headlines, false)}
   end
 
+  def handle_info({:ai_visibility_analyzed, visibility_data}, socket) do
+    # Extract blog topics from recommendations if available
+    # Handle both map and atom key access
+    recommendations =
+      visibility_data[:recommendations] || visibility_data["recommendations"] || %{}
+
+    blog_topics =
+      Map.get(recommendations, "blog_topics") || Map.get(recommendations, :blog_topics) || []
+
+    {:noreply,
+     socket
+     |> assign(:ai_visibility, visibility_data)
+     |> assign(:analyzing_visibility, false)
+     |> assign(:blog_topics, blog_topics)}
+  end
+
+  def handle_info({:ai_visibility_error, reason}, socket) do
+    {:noreply,
+     socket
+     |> assign(:analyzing_visibility, false)
+     |> put_flash(:error, "Failed to analyze AI visibility: #{inspect(reason)}")}
+  end
+
+  def handle_info({:blog_topics_generated, topics}, socket) do
+    {:noreply,
+     socket
+     |> assign(:blog_topics, topics)
+     |> assign(:generating_blog, false)}
+  end
+
+  def handle_info({:blog_topics_error, reason}, socket) do
+    {:noreply,
+     socket
+     |> assign(:generating_blog, false)
+     |> put_flash(:error, "Failed to generate blog topics: #{inspect(reason)}")}
+  end
+
+  def handle_info({:blog_post_generated, blog_post}, socket) do
+    {:noreply,
+     socket
+     |> assign(:generated_blog, blog_post)
+     |> assign(:generating_blog, false)
+     |> assign(:selected_blog_topic, nil)}
+  end
+
+  def handle_info({:blog_post_error, reason}, socket) do
+    {:noreply,
+     socket
+     |> assign(:generating_blog, false)
+     |> put_flash(:error, "Failed to generate blog post: #{inspect(reason)}")}
+  end
+
   def handle_info({:images_generated, images}, socket) do
     website_id = socket.assigns[:website_id]
 
@@ -1720,8 +2393,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
           Assets.create_image(%{
             prompt: image.prompt,
             url: image.url,
-            # Using URL as storage path for now
-            storage_path: image.url,
+            storage_path: image.storage_path || image.url,
             width: image.width || 1024,
             height: image.height || 1024,
             aspect_ratio: image.aspect_ratio || "16:9",
@@ -1736,13 +2408,6 @@ defmodule LaunchkitWeb.DashboardLive.New do
      socket
      |> assign(:images, images)
      |> assign(:generating_images, false)}
-  end
-
-  def handle_info({:videos_generated, videos}, socket) do
-    {:noreply,
-     socket
-     |> assign(:videos, videos)
-     |> assign(:generating_videos, false)}
   end
 
   def handle_info(
@@ -1814,16 +2479,8 @@ defmodule LaunchkitWeb.DashboardLive.New do
     {:noreply,
      socket
      |> assign(:current_step, :generate)
-     |> update_url_params(url, :generate)}
-  end
-
-  def handle_event("continue_to_export", _, socket) do
-    url = socket.assigns.url || ""
-
-    {:noreply,
-     socket
-     |> assign(:current_step, :export)
-     |> update_url_params(url, :export)}
+     |> update_url_params(url, :generate)
+     |> push_event("scroll-to-top", %{})}
   end
 
   def handle_event("go_to_step", %{"step" => step}, socket) do
@@ -1834,7 +2491,8 @@ defmodule LaunchkitWeb.DashboardLive.New do
       {:noreply,
        socket
        |> assign(:current_step, step_atom)
-       |> update_url_params(url, step_atom)}
+       |> update_url_params(url, step_atom)
+       |> push_event("scroll-to-top", %{})}
     else
       {:noreply, socket}
     end
@@ -1842,6 +2500,73 @@ defmodule LaunchkitWeb.DashboardLive.New do
 
   def handle_event("switch_tab", %{"tab" => tab}, socket) do
     {:noreply, assign(socket, :active_tab, String.to_existing_atom(tab))}
+  end
+
+  def handle_event("analyze_ai_visibility", _, socket) do
+    pid = self()
+    url = socket.assigns.url
+    analysis = socket.assigns.analysis
+
+    Task.start(fn ->
+      case AIVisibility.analyze_visibility(url, analysis) do
+        {:ok, visibility_data} ->
+          send(pid, {:ai_visibility_analyzed, visibility_data})
+
+        {:error, reason} ->
+          send(pid, {:ai_visibility_error, reason})
+      end
+    end)
+
+    {:noreply, assign(socket, :analyzing_visibility, true)}
+  end
+
+  def handle_event("generate_blog_topics", _, socket) do
+    pid = self()
+    analysis = socket.assigns.analysis
+    visibility_data = socket.assigns.ai_visibility
+
+    Task.start(fn ->
+      case AIVisibility.generate_blog_topics(analysis, visibility_data) do
+        {:ok, %{"topics" => topics}} ->
+          send(pid, {:blog_topics_generated, topics})
+
+        {:ok, topics} when is_list(topics) ->
+          send(pid, {:blog_topics_generated, topics})
+
+        {:error, reason} ->
+          send(pid, {:blog_topics_error, reason})
+      end
+    end)
+
+    {:noreply, assign(socket, :generating_blog, true)}
+  end
+
+  def handle_event("generate_blog_post", %{"topic-index" => topic_index}, socket) do
+    topic_index = String.to_integer(topic_index)
+    topics = socket.assigns.blog_topics
+    analysis = socket.assigns.analysis
+
+    if topic = Enum.at(topics, topic_index) do
+      pid = self()
+
+      Task.start(fn ->
+        case AIVisibility.generate_blog_post(topic, analysis) do
+          {:ok, blog_post} ->
+            send(pid, {:blog_post_generated, blog_post})
+
+          {:error, reason} ->
+            send(pid, {:blog_post_error, reason})
+        end
+      end)
+
+      {:noreply,
+       socket
+       |> assign(:generating_blog, true)
+       |> assign(:selected_blog_topic, topic)
+       |> assign(:generated_blog, nil)}
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_event("toggle_section", %{"section" => section_id}, socket) do
@@ -1892,24 +2617,6 @@ defmodule LaunchkitWeb.DashboardLive.New do
     end)
 
     {:noreply, assign(socket, :generating_images, true)}
-  end
-
-  def handle_event("generate_videos", _, socket) do
-    pid = self()
-    analysis = socket.assigns.analysis
-    images = socket.assigns.images
-
-    Task.start(fn ->
-      case Assets.generate_videos(analysis, images) do
-        {:ok, videos} ->
-          send(pid, {:videos_generated, videos})
-
-        {:error, _} ->
-          send(pid, {:videos_generated, []})
-      end
-    end)
-
-    {:noreply, assign(socket, :generating_videos, true)}
   end
 
   def handle_event(
@@ -2039,8 +2746,8 @@ defmodule LaunchkitWeb.DashboardLive.New do
     step_index < current_index
   end
 
-  defp has_assets?(headlines, images, videos) do
-    headlines != [] or images != [] or videos != []
+  defp has_assets?(headlines, images) do
+    headlines != [] or images != []
   end
 
   defp update_url_params(socket, url, step) do

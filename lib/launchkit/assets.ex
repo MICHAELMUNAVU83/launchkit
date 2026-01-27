@@ -12,6 +12,8 @@ defmodule Launchkit.Assets do
 
   alias Launchkit.OpenAI
 
+  @uploads_dir "priv/uploads/images"
+
   @doc """
   Returns the list of headlines.
 
@@ -710,7 +712,7 @@ defmodule Launchkit.Assets do
 
     case OpenAI.send_request_to_openai(@image_prompt_context, prompt) do
       {:ok, response} ->
-        IO.inspect(parse_image_prompts(response))
+        parse_image_prompts(response)
 
       {:error, reason} ->
         Logger.error("Failed to generate image prompts: #{inspect(reason)}")
@@ -758,7 +760,7 @@ defmodule Launchkit.Assets do
     images =
       prompts
       |> Enum.map(fn prompt_data ->
-        case IO.inspect(generate_single_image(prompt_data)) do
+        case generate_single_image(prompt_data) do
           {:ok, image} ->
             image
 
@@ -801,16 +803,35 @@ defmodule Launchkit.Assets do
              json: body,
              receive_timeout: 120_000
            ) do
-        {:ok, %{status: 200, body: %{"data" => [%{"url" => url} | _]}}} ->
-          {:ok,
-           %{
-             url: url,
-             prompt: prompt_data["prompt"],
-             aspect_ratio: prompt_data["aspect_ratio"],
-             width: prompt_data["width"],
-             height: prompt_data["height"],
-             status: :completed
-           }}
+        {:ok, %{status: 200, body: %{"data" => [%{"url" => temp_url} | _]}}} ->
+          # Download and save the image locally
+          case download_and_save_image(temp_url) do
+            {:ok, local_url, storage_path} ->
+              {:ok,
+               %{
+                 url: local_url,
+                 storage_path: storage_path,
+                 prompt: prompt_data["prompt"],
+                 aspect_ratio: prompt_data["aspect_ratio"],
+                 width: prompt_data["width"],
+                 height: prompt_data["height"],
+                 status: :completed
+               }}
+
+            {:error, reason} ->
+              Logger.error("Failed to download image: #{inspect(reason)}")
+              # Fallback to original URL if download fails
+              {:ok,
+               %{
+                 url: temp_url,
+                 storage_path: temp_url,
+                 prompt: prompt_data["prompt"],
+                 aspect_ratio: prompt_data["aspect_ratio"],
+                 width: prompt_data["width"],
+                 height: prompt_data["height"],
+                 status: :completed
+               }}
+          end
 
         {:ok, %{status: status, body: body}} ->
           Logger.error("DALL-E error (#{status}): #{inspect(body)}")
@@ -828,6 +849,53 @@ defmodule Launchkit.Assets do
   defp dalle_size("square"), do: "1024x1024"
   defp dalle_size("portrait"), do: "1024x1792"
   defp dalle_size(_), do: "1024x1024"
+
+  # Download image from URL and save to local storage
+  defp download_and_save_image(url) do
+    try do
+      # Ensure uploads directory exists
+      uploads_path = Path.join([Application.app_dir(:launchkit), @uploads_dir])
+      File.mkdir_p!(uploads_path)
+
+      # Generate unique filename
+      filename =
+        "#{System.unique_integer([:positive])}_#{:crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)}.png"
+
+      file_path = Path.join(uploads_path, filename)
+
+      # Download the image - use decode_body: false to get raw binary
+      case Req.get(url,
+             receive_timeout: 30_000,
+             decode_body: false
+           ) do
+        {:ok, %{status: 200, body: image_data}} when is_binary(image_data) ->
+          # Save to file
+          case File.write(file_path, image_data) do
+            :ok ->
+              # Return the public URL path and storage path
+              public_url = "/uploads/images/#{filename}"
+              Logger.info("Successfully saved image to #{file_path}")
+              {:ok, public_url, file_path}
+
+            {:error, reason} ->
+              Logger.error("Failed to write image file: #{inspect(reason)}")
+              {:error, :file_write_failed}
+          end
+
+        {:ok, %{status: status}} ->
+          Logger.error("Failed to download image: HTTP #{status}")
+          {:error, :download_failed}
+
+        {:error, reason} ->
+          Logger.error("Failed to download image: #{inspect(reason)}")
+          {:error, reason}
+      end
+    rescue
+      e ->
+        Logger.error("Exception downloading image: #{inspect(e)}")
+        {:error, :exception}
+    end
+  end
 
   # ============================================================================
   # VIDEO GENERATION
