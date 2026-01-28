@@ -15,18 +15,9 @@ defmodule LaunchkitWeb.HomeLive.Index do
     <!-- Navigation -->
       <nav class="relative z-10 flex items-center justify-between px-8 py-6 max-w-7xl mx-auto">
         <div class="flex items-center gap-2">
-          <div class="w-8 h-8 bg-[#0d0d0d] rounded-lg flex items-center justify-center">
-            <svg
-              class="w-4 h-4 text-white"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.5"
-            >
-              <path d="M5 12l5 5L20 7" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </div>
-          <span class="text-xl font-semibold tracking-tight">LaunchKit</span>
+          <span class="text-xl font-semibold tracking-tight">
+            <img src="/images/small.png" alt="LaunchKit" class="w-10 h-10" />
+          </span>
         </div>
 
         <div class="hidden md:flex items-center gap-8 text-sm text-[#525252]">
@@ -60,13 +51,14 @@ defmodule LaunchkitWeb.HomeLive.Index do
           </div>
           
     <!-- Headline -->
-          <h1 class="text-5xl md:text-6xl lg:text-7xl font-semibold tracking-tight leading-[1.1] mb-6">
-            Google Ads assets <span class="block text-[#a3a3a3]">in seconds, not hours</span>
+          <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6 leading-none">
+            <span class="block text-[#1a1a1a]">You just built your app.</span>
+            <span class="block mt-1 text-[#525252]">Let's help you launch it.</span>
           </h1>
           
     <!-- Subheadline -->
           <p class="text-lg md:text-xl text-[#525252] leading-relaxed max-w-xl mb-10">
-            Drop your website URL. Get headlines, descriptions, images, and videos—all optimized for Performance Max campaigns.
+            Drop your website URL. Get ad copy, images, landing page fixes, and everything else you need to get your product in front of customers.
           </p>
           
     <!-- CTA -->
@@ -84,7 +76,7 @@ defmodule LaunchkitWeb.HomeLive.Index do
                   type="submit"
                   class="bg-[#0d0d0d] text-white text-sm font-medium px-6 py-2.5 rounded-full hover:bg-[#262626] transition-colors whitespace-nowrap"
                 >
-                  Generate Assets
+                  Launch My Product
                 </button>
               </div>
             </form>
@@ -94,7 +86,7 @@ defmodule LaunchkitWeb.HomeLive.Index do
           <div class="flex items-center gap-6 mt-12 pt-12 border-t border-[#e5e5e5]">
             <div>
               <div class="text-2xl font-semibold">2,400+</div>
-              <div class="text-sm text-[#525252]">campaigns launched</div>
+              <div class="text-sm text-[#525252]">products launched</div>
             </div>
             <div class="w-px h-10 bg-[#e5e5e5]"></div>
             <div>
@@ -115,32 +107,34 @@ defmodule LaunchkitWeb.HomeLive.Index do
             <div class="flex items-center gap-3 mb-6">
               <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl"></div>
               <div>
-                <div class="font-medium text-sm">CallWisely.ai</div>
-                <div class="text-xs text-[#a3a3a3]">callwisely.ai</div>
+                <div class="font-medium text-sm">Your Product</div>
+                <div class="text-xs text-[#a3a3a3]">yourproduct.com</div>
               </div>
               <div class="ml-auto px-2 py-1 bg-emerald-50 text-emerald-600 text-xs font-medium rounded-full">
-                99.9%
+                Ready
               </div>
             </div>
 
             <div class="space-y-3">
-              <div class="text-xs font-medium text-[#a3a3a3] uppercase tracking-wider">Headlines</div>
+              <div class="text-xs font-medium text-[#a3a3a3] uppercase tracking-wider">
+                Ad Headlines
+              </div>
               <div class="flex flex-wrap gap-2">
                 <span class="px-3 py-1.5 bg-[#fafaf9] border border-[#e5e5e5] rounded-lg text-xs">
-                  24/7 Customer Support
+                  Launch Faster Today
                 </span>
                 <span class="px-3 py-1.5 bg-[#fafaf9] border border-[#e5e5e5] rounded-lg text-xs">
-                  Never Miss a Call
+                  Get Started Now
                 </span>
                 <span class="px-3 py-1.5 bg-[#fafaf9] border border-[#e5e5e5] rounded-lg text-xs">
-                  AI-Powered Service
+                  Built for You
                 </span>
               </div>
             </div>
 
             <div class="mt-4 space-y-3">
               <div class="text-xs font-medium text-[#a3a3a3] uppercase tracking-wider">
-                Generated Images
+                Generated Assets
               </div>
               <div class="grid grid-cols-3 gap-2">
                 <div class="aspect-square bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg">
@@ -163,12 +157,12 @@ defmodule LaunchkitWeb.HomeLive.Index do
               Everything you need
             </h2>
             <p class="text-[#525252] max-w-lg mx-auto">
-              One tool to generate all your Performance Max assets. No design skills required.
+              Everything you need to launch your product. Generate ads, optimize your landing page, and get in front of customers—no design skills required.
             </p>
           </div>
 
           <div class="grid md:grid-cols-3 gap-8">
-            <!-- Feature 1 -->
+            <!-- Feature 1: Headlines -->
             <div class="group p-8 rounded-2xl border border-[#e5e5e5] hover:border-[#a3a3a3] hover:shadow-lg transition-all">
               <div class="w-12 h-12 bg-[#fafaf9] rounded-xl flex items-center justify-center mb-6 group-hover:bg-[#0d0d0d] transition-colors">
                 <svg
@@ -187,11 +181,11 @@ defmodule LaunchkitWeb.HomeLive.Index do
               </div>
               <h3 class="text-lg font-semibold mb-2">Smart Headlines</h3>
               <p class="text-sm text-[#525252] leading-relaxed">
-                15 short headlines, 5 long headlines—all optimized for character limits and conversion.
+                15 short headlines, 5 long headlines—all optimized for character limits and designed to convert.
               </p>
             </div>
             
-    <!-- Feature 2 -->
+    <!-- Feature 2: Images -->
             <div class="group p-8 rounded-2xl border border-[#e5e5e5] hover:border-[#a3a3a3] hover:shadow-lg transition-all">
               <div class="w-12 h-12 bg-[#fafaf9] rounded-xl flex items-center justify-center mb-6 group-hover:bg-[#0d0d0d] transition-colors">
                 <svg
@@ -210,11 +204,11 @@ defmodule LaunchkitWeb.HomeLive.Index do
               </div>
               <h3 class="text-lg font-semibold mb-2">AI Images</h3>
               <p class="text-sm text-[#525252] leading-relaxed">
-                Generate on-brand images in every required size. Landscape, square, portrait—covered.
+                Generate on-brand images in every required size. Landscape, square, portrait—all ready to use.
               </p>
             </div>
             
-    <!-- Feature 3 -->
+    <!-- Feature 3: AI Visibility -->
             <div class="group p-8 rounded-2xl border border-[#e5e5e5] hover:border-[#a3a3a3] hover:shadow-lg transition-all">
               <div class="w-12 h-12 bg-[#fafaf9] rounded-xl flex items-center justify-center mb-6 group-hover:bg-[#0d0d0d] transition-colors">
                 <svg
@@ -227,13 +221,13 @@ defmodule LaunchkitWeb.HomeLive.Index do
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"
+                    d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"
                   />
                 </svg>
               </div>
-              <h3 class="text-lg font-semibold mb-2">Video Ads</h3>
+              <h3 class="text-lg font-semibold mb-2">AI Visibility</h3>
               <p class="text-sm text-[#525252] leading-relaxed">
-                Turn your images into scroll-stopping video ads with Google Veo. 5-8 second clips, ready to go.
+                Check how well your product appears in AI search results. Get recommendations and generate blog posts to improve visibility.
               </p>
             </div>
           </div>
@@ -245,7 +239,7 @@ defmodule LaunchkitWeb.HomeLive.Index do
         <div class="max-w-7xl mx-auto px-8">
           <div class="text-center mb-16">
             <h2 class="text-3xl md:text-4xl font-semibold tracking-tight mb-4">
-              Three steps to launch
+              Launch in three steps
             </h2>
           </div>
 
@@ -265,16 +259,16 @@ defmodule LaunchkitWeb.HomeLive.Index do
               </div>
               <h3 class="font-semibold mb-2">Review & refine</h3>
               <p class="text-sm text-[#525252]">
-                Edit, regenerate, or pin assets. Get that 99.9% optimization score.
+                Review your brand analysis, refine your assets, and check your AI search visibility.
               </p>
             </div>
             <div class="text-center">
               <div class="w-12 h-12 bg-[#0d0d0d] text-white rounded-full flex items-center justify-center text-lg font-semibold mx-auto mb-6">
                 3
               </div>
-              <h3 class="font-semibold mb-2">Export to Google</h3>
+              <h3 class="font-semibold mb-2">Launch & grow</h3>
               <p class="text-sm text-[#525252]">
-                Download everything or push directly to your Google Ads account.
+                Download your assets, copy the code, and start getting customers.
               </p>
             </div>
           </div>
@@ -285,10 +279,10 @@ defmodule LaunchkitWeb.HomeLive.Index do
       <section class="relative z-10 py-24">
         <div class="max-w-3xl mx-auto px-8 text-center">
           <h2 class="text-3xl md:text-4xl font-semibold tracking-tight mb-4">
-            Ready to launch faster?
+            Ready to launch your product?
           </h2>
           <p class="text-[#525252] mb-8">
-            Start generating assets for free. No credit card required.
+            Get everything you need to start acquiring customers. No credit card required.
           </p>
           <.link
             navigate={~p"/register"}

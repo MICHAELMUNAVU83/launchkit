@@ -161,18 +161,9 @@ defmodule LaunchkitWeb.DashboardLive.New do
       <header class="border-b border-[#e5e5e5] bg-white">
         <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <.link navigate={~p"/"} class="flex items-center gap-2">
-            <div class="w-8 h-8 bg-[#0d0d0d] rounded-lg flex items-center justify-center">
-              <svg
-                class="w-4 h-4 text-white"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.5"
-              >
-                <path d="M5 12l5 5L20 7" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </div>
-            <span class="text-xl font-semibold tracking-tight">LaunchKit</span>
+            <span class="text-xl font-semibold tracking-tight">
+              <img src="/images/small.png" alt="LaunchKit" class="w-12 h-12" />
+            </span>
           </.link>
           
     <!-- Progress Steps -->
@@ -879,7 +870,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
         </.collapsible_section>
       <% end %>
       
-    <!-- Continue Button -->
+    <!-- Continue Buttons -->
       <div class="flex justify-center gap-4 mt-8 mb-4">
         <button
           phx-click="go_to_step"
@@ -2488,11 +2479,13 @@ defmodule LaunchkitWeb.DashboardLive.New do
     url = socket.assigns.url || ""
 
     if step_atom in @steps do
-      {:noreply,
-       socket
-       |> assign(:current_step, step_atom)
-       |> update_url_params(url, step_atom)
-       |> push_event("scroll-to-top", %{})}
+      socket =
+        socket
+        |> assign(:current_step, step_atom)
+        |> update_url_params(url, step_atom)
+        |> push_event("scroll-to-top", %{})
+
+      {:noreply, socket}
     else
       {:noreply, socket}
     end
