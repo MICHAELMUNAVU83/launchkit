@@ -212,14 +212,21 @@ defmodule LaunchkitWeb.DashboardLive.New do
             <% end %>
           </div>
 
-          <div class="text-sm text-[#525252] truncate max-w-[140px] sm:max-w-none" title={if @url, do: @url, else: ""}>
+          <div
+            class="text-sm text-[#525252] truncate max-w-[140px] sm:max-w-none"
+            title={if @url, do: @url, else: ""}
+          >
             {if @url, do: URI.parse(@url).host, else: "No URL"}
           </div>
         </div>
       </header>
       
     <!-- Main Content -->
-      <main class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8" phx-hook="ScrollToTop" id="main-content">
+      <main
+        class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8"
+        phx-hook="ScrollToTop"
+        id="main-content"
+      >
         <%= case @current_step do %>
           <% :analyzing -> %>
             <.analyzing_step url={@url} error={@error} />
@@ -1340,7 +1347,10 @@ defmodule LaunchkitWeb.DashboardLive.New do
         <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
           <%= for image <- @images do %>
             <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow group">
-              <div class={["bg-gray-100 relative overflow-hidden min-h-0", aspect_ratio_class(image.aspect_ratio)]}>
+              <div class={[
+                "bg-gray-100 relative overflow-hidden min-h-0",
+                aspect_ratio_class(image.aspect_ratio)
+              ]}>
                 <%= if image.status == :completed do %>
                   <img
                     src={image.url}
@@ -1450,7 +1460,13 @@ defmodule LaunchkitWeb.DashboardLive.New do
           phx-value-step="generate"
           class="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
         >
-          <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <svg
+            class="w-4 h-4 flex-shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
           Back to Generate
@@ -1460,8 +1476,18 @@ defmodule LaunchkitWeb.DashboardLive.New do
           phx-value-step="export"
           class="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
         >
-          <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+          <svg
+            class="w-4 h-4 flex-shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
+            />
           </svg>
           Go to Export
         </button>
@@ -1538,8 +1564,8 @@ defmodule LaunchkitWeb.DashboardLive.New do
           </button>
         </div>
       </div>
-
-      <!-- Report Tabs -->
+      
+    <!-- Report Tabs -->
       <div class="flex justify-center mb-6">
         <div class="inline-flex bg-gray-100 rounded-lg p-1.5 gap-1">
           <button
@@ -1577,8 +1603,8 @@ defmodule LaunchkitWeb.DashboardLive.New do
           </button>
         </div>
       </div>
-
-      <!-- Tab Content -->
+      
+    <!-- Tab Content -->
       <%= case @export_tab do %>
         <% :headlines -> %>
           <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
@@ -1589,7 +1615,9 @@ defmodule LaunchkitWeb.DashboardLive.New do
                 <div class="space-y-2">
                   <%= for {headline, idx} <- Enum.with_index(@headlines) do %>
                     <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group">
-                      <span class="text-xs font-medium text-gray-400 w-6 flex-shrink-0">{idx + 1}</span>
+                      <span class="text-xs font-medium text-gray-400 w-6 flex-shrink-0">
+                        {idx + 1}
+                      </span>
                       <span class="flex-1 text-sm text-gray-900">{headline.text}</span>
                       <button
                         id={"export-copy-headline-#{idx}"}
@@ -1599,7 +1627,19 @@ defmodule LaunchkitWeb.DashboardLive.New do
                         class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-50 transition-colors flex items-center gap-1.5"
                         title="Copy to clipboard"
                       >
-                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" /></svg>
+                        <svg
+                          class="w-3.5 h-3.5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          stroke-width="2"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"
+                          />
+                        </svg>
                         Copy
                       </button>
                     </div>
@@ -1613,7 +1653,9 @@ defmodule LaunchkitWeb.DashboardLive.New do
                 <div class="space-y-2">
                   <%= for {headline, idx} <- Enum.with_index(@long_headlines) do %>
                     <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group">
-                      <span class="text-xs font-medium text-gray-400 w-6 flex-shrink-0">{idx + 1}</span>
+                      <span class="text-xs font-medium text-gray-400 w-6 flex-shrink-0">
+                        {idx + 1}
+                      </span>
                       <span class="flex-1 text-sm text-gray-900">{headline.text}</span>
                       <button
                         id={"export-copy-long-headline-#{idx}"}
@@ -1623,7 +1665,19 @@ defmodule LaunchkitWeb.DashboardLive.New do
                         class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-50 transition-colors flex items-center gap-1.5"
                         title="Copy to clipboard"
                       >
-                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" /></svg>
+                        <svg
+                          class="w-3.5 h-3.5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          stroke-width="2"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"
+                          />
+                        </svg>
                         Copy
                       </button>
                     </div>
@@ -1637,7 +1691,9 @@ defmodule LaunchkitWeb.DashboardLive.New do
                 <div class="space-y-2">
                   <%= for {desc, idx} <- Enum.with_index(@descriptions) do %>
                     <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group">
-                      <span class="text-xs font-medium text-gray-400 w-6 flex-shrink-0 pt-1">{idx + 1}</span>
+                      <span class="text-xs font-medium text-gray-400 w-6 flex-shrink-0 pt-1">
+                        {idx + 1}
+                      </span>
                       <p class="flex-1 text-sm text-gray-900">{desc.text}</p>
                       <button
                         id={"export-copy-description-#{idx}"}
@@ -1647,7 +1703,19 @@ defmodule LaunchkitWeb.DashboardLive.New do
                         class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-50 transition-colors flex items-center gap-1.5 flex-shrink-0"
                         title="Copy to clipboard"
                       >
-                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" /></svg>
+                        <svg
+                          class="w-3.5 h-3.5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          stroke-width="2"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"
+                          />
+                        </svg>
                         Copy
                       </button>
                     </div>
@@ -1656,10 +1724,11 @@ defmodule LaunchkitWeb.DashboardLive.New do
               </div>
             <% end %>
             <%= if @headlines == [] && @long_headlines == [] && @descriptions == [] do %>
-              <p class="text-sm text-gray-500">No headlines or descriptions yet. Generate assets in the Generate step.</p>
+              <p class="text-sm text-gray-500">
+                No headlines or descriptions yet. Generate assets in the Generate step.
+              </p>
             <% end %>
           </div>
-
         <% :images -> %>
           <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
             <h2 class="text-lg font-semibold text-gray-900 mb-4">Images</h2>
@@ -1673,9 +1742,24 @@ defmodule LaunchkitWeb.DashboardLive.New do
                       <% else %>
                         <div class="absolute inset-0 flex items-center justify-center bg-gray-100">
                           <div class="text-center text-gray-400">
-                            <svg class="w-8 h-8 mx-auto mb-2 animate-spin" fill="none" viewBox="0 0 24 24">
-                              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-                              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                            <svg
+                              class="w-8 h-8 mx-auto mb-2 animate-spin"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                            >
+                              <circle
+                                class="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                stroke-width="4"
+                              />
+                              <path
+                                class="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                              />
                             </svg>
                             <p class="text-xs">Generating...</p>
                           </div>
@@ -1685,8 +1769,24 @@ defmodule LaunchkitWeb.DashboardLive.New do
                     <div class="p-3 bg-white flex items-center justify-between">
                       <span class="text-xs text-gray-500">{image.aspect_ratio || "N/A"}</span>
                       <%= if image.status == :completed do %>
-                        <a href={image.url} download class="px-3 py-1.5 bg-gray-900 text-white text-xs font-medium rounded hover:bg-gray-800 transition-colors flex items-center gap-1.5">
-                          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                        <a
+                          href={image.url}
+                          download
+                          class="px-3 py-1.5 bg-gray-900 text-white text-xs font-medium rounded hover:bg-gray-800 transition-colors flex items-center gap-1.5"
+                        >
+                          <svg
+                            class="w-3.5 h-3.5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            stroke-width="2"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
+                            />
+                          </svg>
                           Download
                         </a>
                       <% end %>
@@ -1695,10 +1795,11 @@ defmodule LaunchkitWeb.DashboardLive.New do
                 <% end %>
               </div>
             <% else %>
-              <p class="text-sm text-gray-500">No images yet. Generate images in the Generate step.</p>
+              <p class="text-sm text-gray-500">
+                No images yet. Generate images in the Generate step.
+              </p>
             <% end %>
           </div>
-
         <% :ai_visibility -> %>
           <div class="space-y-6">
             <div class="flex items-center justify-between">
@@ -1709,7 +1810,19 @@ defmodule LaunchkitWeb.DashboardLive.New do
                 phx-value-step="ai_visibility"
                 class="text-sm font-medium text-emerald-600 hover:text-emerald-700 flex items-center gap-1.5"
               >
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                <svg
+                  class="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M15.75 19.5L8.25 12l7.5-7.5"
+                  />
+                </svg>
                 Go to AI Visibility
               </button>
             </div>
@@ -1718,18 +1831,47 @@ defmodule LaunchkitWeb.DashboardLive.New do
               <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
                 <h3 class="text-base font-semibold text-gray-900 mb-4">Score & Recommendations</h3>
                 <div class="text-center mb-6">
-                  <% overall = Map.get(@ai_visibility, "overall_score") || @ai_visibility[:overall_score] || @ai_visibility.overall_score %>
-                  <div class="inline-flex items-center justify-center w-24 h-24 rounded-full border-6 border-gray-100 mb-3" style={"border-color: #{get_score_color(overall)}"}>
-                    <div class="text-3xl font-bold" style={"color: #{get_score_color(overall)}"}>{overall}</div>
+                  <% overall =
+                    Map.get(@ai_visibility, "overall_score") || @ai_visibility[:overall_score] ||
+                      @ai_visibility.overall_score %>
+                  <div
+                    class="inline-flex items-center justify-center w-24 h-24 rounded-full border-6 border-gray-100 mb-3"
+                    style={"border-color: #{get_score_color(overall)}"}
+                  >
+                    <div class="text-3xl font-bold" style={"color: #{get_score_color(overall)}"}>
+                      {overall}
+                    </div>
                   </div>
                   <p class="text-sm text-gray-600">{get_score_label(overall)}</p>
                 </div>
-                <% scores = Map.get(@ai_visibility, "scores") || @ai_visibility[:scores] || @ai_visibility.scores %>
+                <% scores =
+                  Map.get(@ai_visibility, "scores") || @ai_visibility[:scores] ||
+                    @ai_visibility.scores %>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                  <div class="text-center p-3 bg-gray-50 rounded-lg"><div class="text-xl font-semibold text-gray-900">{Map.get(scores, "presence") || scores[:presence] || scores.presence}</div><div class="text-xs text-gray-600">Presence</div></div>
-                  <div class="text-center p-3 bg-gray-50 rounded-lg"><div class="text-xl font-semibold text-gray-900">{Map.get(scores, "completeness") || scores[:completeness] || scores.completeness}</div><div class="text-xs text-gray-600">Completeness</div></div>
-                  <div class="text-center p-3 bg-gray-50 rounded-lg"><div class="text-xl font-semibold text-gray-900">{Map.get(scores, "recency") || scores[:recency] || scores.recency}</div><div class="text-xs text-gray-600">Recency</div></div>
-                  <div class="text-center p-3 bg-gray-50 rounded-lg"><div class="text-xl font-semibold text-gray-900">{Map.get(scores, "authority") || scores[:authority] || scores.authority}</div><div class="text-xs text-gray-600">Authority</div></div>
+                  <div class="text-center p-3 bg-gray-50 rounded-lg">
+                    <div class="text-xl font-semibold text-gray-900">
+                      {Map.get(scores, "presence") || scores[:presence] || scores.presence}
+                    </div>
+                    <div class="text-xs text-gray-600">Presence</div>
+                  </div>
+                  <div class="text-center p-3 bg-gray-50 rounded-lg">
+                    <div class="text-xl font-semibold text-gray-900">
+                      {Map.get(scores, "completeness") || scores[:completeness] || scores.completeness}
+                    </div>
+                    <div class="text-xs text-gray-600">Completeness</div>
+                  </div>
+                  <div class="text-center p-3 bg-gray-50 rounded-lg">
+                    <div class="text-xl font-semibold text-gray-900">
+                      {Map.get(scores, "recency") || scores[:recency] || scores.recency}
+                    </div>
+                    <div class="text-xs text-gray-600">Recency</div>
+                  </div>
+                  <div class="text-center p-3 bg-gray-50 rounded-lg">
+                    <div class="text-xl font-semibold text-gray-900">
+                      {Map.get(scores, "authority") || scores[:authority] || scores.authority}
+                    </div>
+                    <div class="text-xs text-gray-600">Authority</div>
+                  </div>
                 </div>
                 <%= if recommendations = Map.get(@ai_visibility, "recommendations") || @ai_visibility[:recommendations] || @ai_visibility.recommendations do %>
                   <%= if priority = Map.get(recommendations, "priority_recommendations") || Map.get(recommendations, :priority_recommendations) do %>
@@ -1739,9 +1881,13 @@ defmodule LaunchkitWeb.DashboardLive.New do
                         <div class="p-3 bg-gray-50 rounded-lg border border-gray-200">
                           <div class="flex items-start justify-between gap-2 mb-1">
                             <h5 class="font-medium text-gray-900">{rec["title"] || rec[:title]}</h5>
-                            <span class={"px-2 py-0.5 text-xs font-medium rounded #{get_impact_class(rec["impact"] || rec[:impact])}"}>{rec["impact"] || rec[:impact]} impact</span>
+                            <span class={"px-2 py-0.5 text-xs font-medium rounded #{get_impact_class(rec["impact"] || rec[:impact])}"}>
+                              {rec["impact"] || rec[:impact]} impact
+                            </span>
                           </div>
-                          <p class="text-sm text-gray-600">{rec["description"] || rec[:description]}</p>
+                          <p class="text-sm text-gray-600">
+                            {rec["description"] || rec[:description]}
+                          </p>
                         </div>
                       <% end %>
                     </div>
@@ -1751,7 +1897,19 @@ defmodule LaunchkitWeb.DashboardLive.New do
                     <ul class="space-y-1.5 text-sm text-gray-600">
                       <%= for win <- quick_wins do %>
                         <li class="flex items-start gap-2">
-                          <svg class="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                          <svg
+                            class="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            stroke-width="2"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
                           <span>{win}</span>
                         </li>
                       <% end %>
@@ -1766,16 +1924,41 @@ defmodule LaunchkitWeb.DashboardLive.New do
               <%= if @blog_topics != [] do %>
                 <div class="space-y-3 mb-6">
                   <%= for {topic, idx} <- Enum.with_index(@blog_topics) do %>
-                    <% topic_title = topic["title"] || topic[:title] || topic["topic"] || topic[:topic] || "Untitled Topic" %>
+                    <% topic_title =
+                      topic["title"] || topic[:title] || topic["topic"] || topic[:topic] ||
+                        "Untitled Topic" %>
                     <% topic_copy_text = export_blog_topic_copy_text(topic) %>
                     <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group">
                       <div class="flex-1 min-w-0">
                         <h4 class="font-medium text-gray-900">{topic_title}</h4>
-                        <%= if desc = topic["description"] || topic[:description] do %><p class="text-sm text-gray-600 mt-1">{desc}</p><% end %>
-                        <%= if why = topic["why_it_helps"] || topic[:why_it_helps] || topic["reason"] || topic[:reason] do %><p class="text-xs text-gray-500 mt-1">{why}</p><% end %>
+                        <%= if desc = topic["description"] || topic[:description] do %>
+                          <p class="text-sm text-gray-600 mt-1">{desc}</p>
+                        <% end %>
+                        <%= if why = topic["why_it_helps"] || topic[:why_it_helps] || topic["reason"] || topic[:reason] do %>
+                          <p class="text-xs text-gray-500 mt-1">{why}</p>
+                        <% end %>
                       </div>
-                      <button id={"export-copy-blog-topic-#{idx}"} phx-click="copy_text" phx-value-text={topic_copy_text} phx-hook="CopyToClipboard" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-50 flex-shrink-0" title="Copy topic">
-                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" /></svg>
+                      <button
+                        id={"export-copy-blog-topic-#{idx}"}
+                        phx-click="copy_text"
+                        phx-value-text={topic_copy_text}
+                        phx-hook="CopyToClipboard"
+                        class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-50 flex-shrink-0"
+                        title="Copy topic"
+                      >
+                        <svg
+                          class="w-3.5 h-3.5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          stroke-width="2"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"
+                          />
+                        </svg>
                         Copy
                       </button>
                     </div>
@@ -1787,17 +1970,40 @@ defmodule LaunchkitWeb.DashboardLive.New do
                   <h4 class="font-medium text-gray-900 mb-2">Generated Blog Post</h4>
                   <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
                     <div class="flex items-start justify-between gap-3 mb-3">
-                      <h5 class="font-semibold text-gray-900">{@generated_blog["title"] || @generated_blog[:title] || "Blog Post"}</h5>
-                      <button id="export-copy-blog-content" phx-click="copy_text" phx-value-text={@generated_blog["content"] || @generated_blog[:content] || ""} phx-hook="CopyToClipboard" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-50 flex-shrink-0" title="Copy full post">Copy Post</button>
+                      <h5 class="font-semibold text-gray-900">
+                        {@generated_blog["title"] || @generated_blog[:title] || "Blog Post"}
+                      </h5>
+                      <button
+                        id="export-copy-blog-content"
+                        phx-click="copy_text"
+                        phx-value-text={@generated_blog["content"] || @generated_blog[:content] || ""}
+                        phx-hook="CopyToClipboard"
+                        class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-50 flex-shrink-0"
+                        title="Copy full post"
+                      >
+                        Copy Post
+                      </button>
                     </div>
-                    <div class="prose prose-sm max-w-none text-gray-700 text-sm line-clamp-4">{render_markdown(@generated_blog["content"] || @generated_blog[:content] || "")}</div>
-                    <%= if keywords = @generated_blog["keywords"] || @generated_blog[:keywords] do %><p class="text-xs text-gray-500 mt-2"><span class="font-medium">Keywords:</span> {Enum.join(keywords, ", ")}</p><% end %>
-                    <%= if meta = @generated_blog["meta_description"] || @generated_blog[:meta_description] do %><p class="text-xs text-gray-500 mt-1"><span class="font-medium">Meta:</span> {meta}</p><% end %>
+                    <div class="prose prose-sm max-w-none text-gray-700 text-sm line-clamp-4">
+                      {render_markdown(@generated_blog["content"] || @generated_blog[:content] || "")}
+                    </div>
+                    <%= if keywords = @generated_blog["keywords"] || @generated_blog[:keywords] do %>
+                      <p class="text-xs text-gray-500 mt-2">
+                        <span class="font-medium">Keywords:</span> {Enum.join(keywords, ", ")}
+                      </p>
+                    <% end %>
+                    <%= if meta = @generated_blog["meta_description"] || @generated_blog[:meta_description] do %>
+                      <p class="text-xs text-gray-500 mt-1">
+                        <span class="font-medium">Meta:</span> {meta}
+                      </p>
+                    <% end %>
                   </div>
                 </div>
               <% end %>
               <%= if @blog_topics == [] && @generated_blog == nil do %>
-                <p class="text-sm text-gray-500">No blog topics or generated post yet. Use "Go to AI Visibility" to analyze and generate content.</p>
+                <p class="text-sm text-gray-500">
+                  No blog topics or generated post yet. Use "Go to AI Visibility" to analyze and generate content.
+                </p>
               <% end %>
             </div>
           </div>
@@ -1810,6 +2016,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
     title = topic["title"] || topic[:title] || topic["topic"] || topic[:topic] || "Untitled Topic"
     desc = topic["description"] || topic[:description] || ""
     why = topic["why_it_helps"] || topic[:why_it_helps] || topic["reason"] || topic[:reason] || ""
+
     [title, desc, why]
     |> Enum.filter(&(is_binary(&1) and String.trim(&1) != ""))
     |> Enum.join("\n\n")
@@ -1914,17 +2121,16 @@ defmodule LaunchkitWeb.DashboardLive.New do
           </div>
           
     <!-- Overall Score -->
-          <% overall_score = Map.get(@ai_visibility, "overall_score") || @ai_visibility[:overall_score] || @ai_visibility.overall_score %>
+          <% overall_score =
+            Map.get(@ai_visibility, "overall_score") || @ai_visibility[:overall_score] ||
+              @ai_visibility.overall_score %>
           <div class="text-center mb-8">
             <div
               class="inline-flex items-center justify-center w-32 h-32 rounded-full border-8 border-gray-100 mb-4"
               style={"border-color: #{get_score_color(overall_score)}"}
             >
               <div class="text-center">
-                <div
-                  class="text-4xl font-bold"
-                  style={"color: #{get_score_color(overall_score)}"}
-                >
+                <div class="text-4xl font-bold" style={"color: #{get_score_color(overall_score)}"}>
                   {overall_score}
                 </div>
                 <div class="text-xs text-gray-500 mt-1">/ 100</div>
@@ -1936,7 +2142,8 @@ defmodule LaunchkitWeb.DashboardLive.New do
           </div>
           
     <!-- Individual Scores -->
-          <% scores = Map.get(@ai_visibility, "scores") || @ai_visibility[:scores] || @ai_visibility.scores %>
+          <% scores =
+            Map.get(@ai_visibility, "scores") || @ai_visibility[:scores] || @ai_visibility.scores %>
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div class="text-center p-4 bg-gray-50 rounded-lg">
               <div class="text-2xl font-semibold text-gray-900">
@@ -2312,7 +2519,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
     # Use JavaScript to get the current origin, or construct from endpoint config
     # For now, we'll use a client-side approach via a data attribute
     # The actual URL will be constructed in JavaScript
-    base_url = LaunchkitWeb.Endpoint.url()
+    base_url = "https://launchkit.info"
     path = "/dashboard/new"
     params = URI.encode_query(%{"url" => url || "", "step" => "export"})
     "#{base_url}#{path}?#{params}"
@@ -2466,6 +2673,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
 
     # Persist to database
     website_id = socket.assigns[:website_id]
+
     if website_id do
       Campaigns.upsert_ai_visibility(website_id, %{
         visibility_data: visibility_data,
@@ -2489,6 +2697,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
 
   def handle_info({:blog_topics_generated, topics}, socket) do
     website_id = socket.assigns[:website_id]
+
     if website_id do
       Campaigns.upsert_ai_visibility(website_id, %{blog_topics: topics})
     end
@@ -2508,6 +2717,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
 
   def handle_info({:blog_post_generated, blog_post}, socket) do
     website_id = socket.assigns[:website_id]
+
     if website_id do
       Campaigns.upsert_ai_visibility(website_id, %{generated_blog: blog_post})
     end
@@ -2896,6 +3106,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
   # ============================================================================
 
   defp step_label(:ai_visibility), do: "AI Visibility"
+
   defp step_label(step) do
     step
     |> Atom.to_string()
