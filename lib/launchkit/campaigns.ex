@@ -7,6 +7,7 @@ defmodule Launchkit.Campaigns do
   alias Launchkit.Repo
 
   alias Launchkit.Campaigns.Website
+  alias Launchkit.Campaigns.AiVisibility
 
   @doc """
   Returns the list of websites.
@@ -118,5 +119,36 @@ defmodule Launchkit.Campaigns do
   """
   def change_website(%Website{} = website, attrs \\ %{}) do
     Website.changeset(website, attrs)
+  end
+
+  # ---------------------------------------------------------------------------
+  # AI Visibility
+  # ---------------------------------------------------------------------------
+
+  @doc """
+  Gets AI visibility record for a website, if it exists.
+  """
+  def get_ai_visibility_by_website(website_id) when is_integer(website_id) do
+    Repo.get_by(AiVisibility, website_id: website_id)
+  end
+
+  def get_ai_visibility_by_website(_), do: nil
+
+  @doc """
+  Creates or updates AI visibility for a website.
+  Pass a map with :visibility_data, :blog_topics, :generated_blog (any subset).
+  """
+  def upsert_ai_visibility(website_id, attrs) when is_integer(website_id) do
+    case get_ai_visibility_by_website(website_id) do
+      nil ->
+        %AiVisibility{website_id: website_id}
+        |> AiVisibility.changeset(Map.merge(%{visibility_data: %{}, blog_topics: []}, attrs))
+        |> Repo.insert()
+
+      record ->
+        record
+        |> AiVisibility.changeset(attrs)
+        |> Repo.update()
+    end
   end
 end

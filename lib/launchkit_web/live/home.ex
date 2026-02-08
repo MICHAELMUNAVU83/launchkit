@@ -2,48 +2,29 @@ defmodule LaunchkitWeb.HomeLive.Index do
   use LaunchkitWeb, :live_view
 
   def mount(_params, _session, socket) do
-    {:ok, socket}
+    {:ok,
+     socket
+     |> assign(:page_title, "Google Ads Headlines, Copy & AI Visibility")}
   end
 
   def render(assigns) do
     ~H"""
-    <div class="min-h-screen bg-[#fafaf9] text-[#1a1a1a] font-['Outfit',sans-serif]">
+    <div class="min-h-screen bg-[#fafaf9] text-[#1a1a1a] font-sans antialiased">
       <!-- Subtle grid background -->
       <div class="fixed inset-0 bg-[linear-gradient(to_right,#e5e5e5_1px,transparent_1px),linear-gradient(to_bottom,#e5e5e5_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-40 pointer-events-none">
       </div>
       
     <!-- Navigation -->
-      <nav class="relative z-10 flex items-center justify-between px-8 py-6 max-w-7xl mx-auto">
+      <nav class="relative z-10 flex items-center justify-between px-4 sm:px-6 lg:px-8 py-6 max-w-7xl mx-auto">
         <div class="flex items-center gap-2">
           <span class="text-xl font-semibold tracking-tight">
             <img src="/images/small.png" alt="LaunchKit" class="w-10 h-10" />
           </span>
         </div>
-
-        <div class="hidden md:flex items-center gap-8 text-sm text-[#525252]">
-          <a href="#features" class="hover:text-[#0d0d0d] transition-colors">Features</a>
-          <a href="#pricing" class="hover:text-[#0d0d0d] transition-colors">Pricing</a>
-          <a href="#docs" class="hover:text-[#0d0d0d] transition-colors">Docs</a>
-        </div>
-
-        <div class="flex items-center gap-3">
-          <.link
-            navigate={~p"/login"}
-            class="text-sm text-[#525252] hover:text-[#0d0d0d] transition-colors px-4 py-2"
-          >
-            Log in
-          </.link>
-          <.link
-            navigate={~p"/register"}
-            class="text-sm bg-[#0d0d0d] text-white px-5 py-2.5 rounded-full hover:bg-[#262626] transition-colors"
-          >
-            Get Started
-          </.link>
-        </div>
       </nav>
       
     <!-- Hero Section -->
-      <main class="relative z-10 max-w-7xl mx-auto px-8 pt-24 pb-32">
+      <main class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-24 pb-24 sm:pb-32">
         <div class="max-w-3xl">
           <!-- Badge -->
           <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-[#e5e5e5] rounded-full text-xs text-[#525252] mb-8 shadow-sm">
@@ -51,14 +32,14 @@ defmodule LaunchkitWeb.HomeLive.Index do
           </div>
           
     <!-- Headline -->
-          <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6 leading-none">
-            <span class="block text-[#1a1a1a]">You just built your app.</span>
-            <span class="block mt-1 text-[#525252]">Let's help you launch it.</span>
+          <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6 leading-tight">
+            <span class="block text-[#1a1a1a]">Google Ads headlines & copy.</span>
+            <span class="block mt-1 text-[#525252]">Generated assets. Your AI visibility score.</span>
           </h1>
           
     <!-- Subheadline -->
-          <p class="text-lg md:text-xl text-[#525252] leading-relaxed max-w-xl mb-10">
-            Drop your website URL. Get ad copy, images, landing page fixes, and everything else you need to get your product in front of customers.
+          <p class="text-base sm:text-lg md:text-xl text-[#525252] leading-relaxed max-w-xl mb-8 sm:mb-10">
+            Drop your website URL. Get headlines and copy for Google Ads, AI-generated ad images, and a score showing how well you show up in AI search—so you can run better campaigns and improve visibility.
           </p>
           
     <!-- CTA -->
@@ -69,21 +50,21 @@ defmodule LaunchkitWeb.HomeLive.Index do
                   type="url"
                   name="url"
                   placeholder="https://yourwebsite.com"
-                  class="flex-1 bg-transparent px-4 py-2.5 text-sm outline-none border-none outline:border-none placeholder:text-[#a3a3a3]"
+                  class="flex-1 bg-transparent px-4 py-2.5 text-sm outline-none border-none focus:outline-none focus:ring-0 focus:ring-offset-0 placeholder:text-[#a3a3a3]"
                   required
                 />
                 <button
                   type="submit"
                   class="bg-[#0d0d0d] text-white text-sm font-medium px-6 py-2.5 rounded-full hover:bg-[#262626] transition-colors whitespace-nowrap"
                 >
-                  Launch My Product
+                  Get My Headlines & Score
                 </button>
               </div>
             </form>
           </div>
           
     <!-- Social Proof -->
-          <div class="flex items-center gap-6 mt-12 pt-12 border-t border-[#e5e5e5]">
+          <div class="flex flex-wrap items-center justify-center sm:justify-start gap-4 sm:gap-6 mt-12 pt-12 border-t border-[#e5e5e5]">
             <div>
               <div class="text-2xl font-semibold">2,400+</div>
               <div class="text-sm text-[#525252]">products launched</div>
@@ -105,7 +86,7 @@ defmodule LaunchkitWeb.HomeLive.Index do
         <div class="absolute right-8 top-32 hidden xl:block w-[420px]">
           <div class="bg-white border border-[#e5e5e5] rounded-2xl shadow-xl p-6 transform rotate-1 hover:rotate-0 transition-transform duration-300">
             <div class="flex items-center gap-3 mb-6">
-              <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl"></div>
+              <img src="/images/small.png" alt="LaunchKit" class="w-10 h-10 rounded-xl object-cover" />
               <div>
                 <div class="font-medium text-sm">Your Product</div>
                 <div class="text-xs text-[#a3a3a3]">yourproduct.com</div>
@@ -117,7 +98,7 @@ defmodule LaunchkitWeb.HomeLive.Index do
 
             <div class="space-y-3">
               <div class="text-xs font-medium text-[#a3a3a3] uppercase tracking-wider">
-                Ad Headlines
+                Google Ads Headlines
               </div>
               <div class="flex flex-wrap gap-2">
                 <span class="px-3 py-1.5 bg-[#fafaf9] border border-[#e5e5e5] rounded-lg text-xs">
@@ -134,7 +115,7 @@ defmodule LaunchkitWeb.HomeLive.Index do
 
             <div class="mt-4 space-y-3">
               <div class="text-xs font-medium text-[#a3a3a3] uppercase tracking-wider">
-                Generated Assets
+                Generated Ad Images
               </div>
               <div class="grid grid-cols-3 gap-2">
                 <div class="aspect-square bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg">
@@ -150,20 +131,20 @@ defmodule LaunchkitWeb.HomeLive.Index do
       </main>
       
     <!-- Features Section -->
-      <section id="features" class="relative z-10 bg-white border-y border-[#e5e5e5] py-24">
-        <div class="max-w-7xl mx-auto px-8">
+      <section id="features" class="relative z-10 bg-white border-y border-[#e5e5e5] py-16 sm:py-24">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="text-center mb-16">
             <h2 class="text-3xl md:text-4xl font-semibold tracking-tight mb-4">
-              Everything you need
+              Everything for better Google Ads
             </h2>
             <p class="text-[#525252] max-w-lg mx-auto">
-              Everything you need to launch your product. Generate ads, optimize your landing page, and get in front of customers—no design skills required.
+              Get headlines and copy for Google Ads, generated ad images, and your AI visibility score—all from your website URL. Copy what you need and improve how you show up in AI search.
             </p>
           </div>
 
-          <div class="grid md:grid-cols-3 gap-8">
-            <!-- Feature 1: Headlines -->
-            <div class="group p-8 rounded-2xl border border-[#e5e5e5] hover:border-[#a3a3a3] hover:shadow-lg transition-all">
+          <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+            <!-- Feature 1: Headlines & Copy -->
+            <div class="group p-6 sm:p-8 rounded-2xl border border-[#e5e5e5] hover:border-[#a3a3a3] hover:shadow-lg transition-all">
               <div class="w-12 h-12 bg-[#fafaf9] rounded-xl flex items-center justify-center mb-6 group-hover:bg-[#0d0d0d] transition-colors">
                 <svg
                   class="w-6 h-6 text-[#525252] group-hover:text-white transition-colors"
@@ -179,14 +160,14 @@ defmodule LaunchkitWeb.HomeLive.Index do
                   />
                 </svg>
               </div>
-              <h3 class="text-lg font-semibold mb-2">Smart Headlines</h3>
+              <h3 class="text-lg font-semibold mb-2">Google Ads Headlines & Copy</h3>
               <p class="text-sm text-[#525252] leading-relaxed">
-                15 short headlines, 5 long headlines—all optimized for character limits and designed to convert.
+                Short and long headlines plus descriptions, optimized for Google Ads character limits and ready to copy into your campaigns.
               </p>
             </div>
             
     <!-- Feature 2: Images -->
-            <div class="group p-8 rounded-2xl border border-[#e5e5e5] hover:border-[#a3a3a3] hover:shadow-lg transition-all">
+            <div class="group p-6 sm:p-8 rounded-2xl border border-[#e5e5e5] hover:border-[#a3a3a3] hover:shadow-lg transition-all">
               <div class="w-12 h-12 bg-[#fafaf9] rounded-xl flex items-center justify-center mb-6 group-hover:bg-[#0d0d0d] transition-colors">
                 <svg
                   class="w-6 h-6 text-[#525252] group-hover:text-white transition-colors"
@@ -202,14 +183,14 @@ defmodule LaunchkitWeb.HomeLive.Index do
                   />
                 </svg>
               </div>
-              <h3 class="text-lg font-semibold mb-2">AI Images</h3>
+              <h3 class="text-lg font-semibold mb-2">Generated Ad Images</h3>
               <p class="text-sm text-[#525252] leading-relaxed">
-                Generate on-brand images in every required size. Landscape, square, portrait—all ready to use.
+                AI-generated ad images in landscape, square, and portrait. On-brand and ready to download for your campaigns.
               </p>
             </div>
             
     <!-- Feature 3: AI Visibility -->
-            <div class="group p-8 rounded-2xl border border-[#e5e5e5] hover:border-[#a3a3a3] hover:shadow-lg transition-all">
+            <div class="group p-6 sm:p-8 rounded-2xl border border-[#e5e5e5] hover:border-[#a3a3a3] hover:shadow-lg transition-all sm:col-span-2 lg:col-span-1">
               <div class="w-12 h-12 bg-[#fafaf9] rounded-xl flex items-center justify-center mb-6 group-hover:bg-[#0d0d0d] transition-colors">
                 <svg
                   class="w-6 h-6 text-[#525252] group-hover:text-white transition-colors"
@@ -225,9 +206,9 @@ defmodule LaunchkitWeb.HomeLive.Index do
                   />
                 </svg>
               </div>
-              <h3 class="text-lg font-semibold mb-2">AI Visibility</h3>
+              <h3 class="text-lg font-semibold mb-2">AI Visibility Score</h3>
               <p class="text-sm text-[#525252] leading-relaxed">
-                Check how well your product appears in AI search results. Get recommendations and generate blog posts to improve visibility.
+                See how well you show up in AI search. Get a score, actionable recommendations, and blog ideas to improve visibility.
               </p>
             </div>
           </div>
@@ -235,15 +216,15 @@ defmodule LaunchkitWeb.HomeLive.Index do
       </section>
       
     <!-- How it works -->
-      <section class="relative z-10 py-24">
-        <div class="max-w-7xl mx-auto px-8">
+      <section class="relative z-10 py-16 sm:py-24">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="text-center mb-16">
             <h2 class="text-3xl md:text-4xl font-semibold tracking-tight mb-4">
-              Launch in three steps
+              Three steps to better campaigns
             </h2>
           </div>
 
-          <div class="grid md:grid-cols-3 gap-12">
+          <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-10 sm:gap-12">
             <div class="text-center">
               <div class="w-12 h-12 bg-[#0d0d0d] text-white rounded-full flex items-center justify-center text-lg font-semibold mx-auto mb-6">
                 1
@@ -257,80 +238,28 @@ defmodule LaunchkitWeb.HomeLive.Index do
               <div class="w-12 h-12 bg-[#0d0d0d] text-white rounded-full flex items-center justify-center text-lg font-semibold mx-auto mb-6">
                 2
               </div>
-              <h3 class="font-semibold mb-2">Review & refine</h3>
+              <h3 class="font-semibold mb-2">Review & generate</h3>
               <p class="text-sm text-[#525252]">
-                Review your brand analysis, refine your assets, and check your AI search visibility.
+                Review your brand analysis, generate Google Ads headlines and copy, ad images, and get your AI visibility score.
               </p>
             </div>
             <div class="text-center">
               <div class="w-12 h-12 bg-[#0d0d0d] text-white rounded-full flex items-center justify-center text-lg font-semibold mx-auto mb-6">
                 3
               </div>
-              <h3 class="font-semibold mb-2">Launch & grow</h3>
+              <h3 class="font-semibold mb-2">Copy & export</h3>
               <p class="text-sm text-[#525252]">
-                Download your assets, copy the code, and start getting customers.
+                Copy headlines and descriptions, download images, and use your AI visibility report to improve.
               </p>
             </div>
           </div>
         </div>
       </section>
       
-    <!-- CTA Section -->
-      <section class="relative z-10 py-24">
-        <div class="max-w-3xl mx-auto px-8 text-center">
-          <h2 class="text-3xl md:text-4xl font-semibold tracking-tight mb-4">
-            Ready to launch your product?
-          </h2>
-          <p class="text-[#525252] mb-8">
-            Get everything you need to start acquiring customers. No credit card required.
-          </p>
-          <.link
-            navigate={~p"/register"}
-            class="inline-flex items-center gap-2 bg-[#0d0d0d] text-white px-8 py-4 rounded-full text-lg font-medium hover:bg-[#262626] transition-colors"
-          >
-            Get Started Free
-            <svg
-              class="w-5 h-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
-              />
-            </svg>
-          </.link>
-        </div>
-      </section>
-      
     <!-- Footer -->
-      <footer class="relative z-10 border-t border-[#e5e5e5] py-12">
-        <div class="max-w-7xl mx-auto px-8 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div class="flex items-center gap-2">
-            <div class="w-6 h-6 bg-[#0d0d0d] rounded-md flex items-center justify-center">
-              <svg
-                class="w-3 h-3 text-white"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.5"
-              >
-                <path d="M5 12l5 5L20 7" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            </div>
-            <span class="text-sm font-medium">LaunchKit</span>
-          </div>
-          <div class="flex items-center gap-6 text-sm text-[#525252]">
-            <a href="#" class="hover:text-[#0d0d0d] transition-colors">Privacy</a>
-            <a href="#" class="hover:text-[#0d0d0d] transition-colors">Terms</a>
-            <a href="#" class="hover:text-[#0d0d0d] transition-colors">Twitter</a>
-          </div>
-          <div class="text-sm text-[#a3a3a3]">
-            © 2026 LaunchKit. Built with Elixir.
-          </div>
+      <footer class="relative z-10 border-t border-[#e5e5e5] py-10 sm:py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-[#525252]">
+          Built by Michael Munavu (<a href="https://www.michaelmunavu.com" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline hover:text-blue-800 transition-colors">www.michaelmunavu.com</a>)
         </div>
       </footer>
     </div>

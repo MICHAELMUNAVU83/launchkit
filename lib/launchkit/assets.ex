@@ -712,7 +712,7 @@ defmodule Launchkit.Assets do
 
     case OpenAI.send_request_to_openai(@image_prompt_context, prompt) do
       {:ok, response} ->
-        parse_image_prompts(response)
+        IO.inspect(parse_image_prompts(response))
 
       {:error, reason} ->
         Logger.error("Failed to generate image prompts: #{inspect(reason)}")
@@ -721,20 +721,190 @@ defmodule Launchkit.Assets do
   end
 
   defp build_image_prompt_request(analysis) do
+    company_name = get_in(analysis, ["brand_summary", "company_name"]) || "Unknown"
+    industry = get_in(analysis, ["brand_summary", "industry"]) || "N/A"
+    one_liner = get_in(analysis, ["brand_summary", "one_liner"]) || "N/A"
+    primary_colors = get_in(analysis, ["visual_direction", "primary_colors"]) || []
+    mood_keywords = get_in(analysis, ["visual_direction", "mood_keywords"]) || []
+    avoid = get_in(analysis, ["visual_direction", "avoid"]) || []
+
+    target_audience =
+      get_in(analysis, ["target_audience", "primary_persona"]) || "general audience"
+
+    pain_points = get_in(analysis, ["target_audience", "pain_points"]) || []
+    benefits = get_in(analysis, ["headline_ingredients", "benefits"]) || []
+    features = get_in(analysis, ["headline_ingredients", "features"]) || []
+    power_words = get_in(analysis, ["headline_ingredients", "power_words"]) || []
+
+    advantages = get_in(analysis, ["competitive_advantages"]) || []
+
+    advantages_text =
+      Enum.map_join(advantages, "\n", fn adv ->
+        "- #{adv["advantage"]}: #{adv["proof"]}"
+      end)
+
+    pillars = get_in(analysis, ["messaging_pillars"]) || []
+
+    pillars_text =
+      Enum.map_join(pillars, "\n", fn p ->
+        "- #{p["pillar"]}: #{p["emotional_hook"]} (keywords: #{Enum.join(p["keywords"] || [], ", ")})"
+      end)
+
     """
-    BRAND ANALYSIS:
-    Company: #{get_in(analysis, ["brand_summary", "company_name"]) || "Unknown"}
-    Industry: #{get_in(analysis, ["brand_summary", "industry"]) || "N/A"}
-    One-liner: #{get_in(analysis, ["brand_summary", "one_liner"]) || "N/A"}
+    You are a commercial photographer AND advertising creative director creating prompts for Google Ads.
+    The AI image generator will render TEXT directly in the image, so include text instructions in each prompt.
 
-    VISUAL DIRECTION:
-    Primary colors: #{inspect(get_in(analysis, ["visual_direction", "primary_colors"]) || [])}
-    Imagery themes: #{inspect(get_in(analysis, ["visual_direction", "imagery_themes"]) || [])}
-    Mood: #{inspect(get_in(analysis, ["visual_direction", "mood_keywords"]) || [])}
-    Suggested scenes: #{inspect(get_in(analysis, ["visual_direction", "suggested_scenes"]) || [])}
-    Avoid: #{inspect(get_in(analysis, ["visual_direction", "avoid"]) || [])}
+    === PRODUCT UNDERSTANDING (CRITICAL) ===
+    Company: #{company_name}
+    Industry: #{industry}
+    What the product does: #{one_liner}
 
-    Generate image prompts for Google Ads now.
+    Key features: #{Enum.join(features, ", ")}
+    Customer benefits: #{Enum.join(benefits, ", ")}
+    Power words for headlines: #{Enum.join(power_words, ", ")}
+
+    Competitive advantages:
+    #{advantages_text}
+
+    Messaging pillars:
+    #{pillars_text}
+
+    === TARGET CUSTOMER ===
+    Who they are: #{target_audience}
+    Their problems: #{Enum.join(pain_points, ", ")}
+
+    === VISUAL GUIDELINES ===
+    Brand colors (use subtly): #{Enum.join(primary_colors, ", ")}
+    Mood: #{Enum.join(mood_keywords, ", ")}
+    Avoid: #{Enum.join(avoid, ", ")}
+
+    === TEXT IN IMAGE REQUIREMENTS ===
+
+    Each prompt MUST include instructions for text to be rendered IN the image:
+
+    1. COMPOSITION FOR TEXT:
+       - Leave clear space for text (top third OR bottom third OR left/right third)
+       - That area should have simpler backgrounds (solid colors, soft gradients, blur, sky, walls)
+       - Main subject should NOT be in the text zone
+
+    2. TEXT INSTRUCTIONS IN PROMPT:
+       - Include the exact headline text to display (max 30 chars)
+       - Include the exact description text to display (max 90 chars)
+       - Specify text position, color, and style
+       - Use format: TEXT IN IMAGE: Headline: "Your Headline" | Subtext: "Your description"
+
+    3. TYPOGRAPHY GUIDELINES:
+       - Headlines: Bold, modern sans-serif (like Montserrat, Arial Black)
+       - Descriptions: Clean sans-serif, smaller size
+       - Colors should contrast with background
+       - Professional, elegant, suitable for Google Ads
+
+    === STORY-DRIVEN SCENES ===
+
+    Each image must VISUALLY COMMUNICATE what the product does.
+    Show a SPECIFIC MOMENT that tells the product's story.
+
+    Ask yourself: "If someone saw this image, would they understand it's about #{one_liner}?"
+
+    === CRITICAL RULES ===
+
+    COMPOSITION:
+    - Rule of thirds—place subject on one side, leave other side for text
+    - Ensure text zone has low-detail background for readability
+    - Avoid busy patterns or high-contrast areas in text zone
+
+    PHOTOGRAPHY STYLE:
+    - Shot on Sony A7IV or Canon EOS R5 with prime lens (35mm or 50mm)
+    - Natural lighting, shallow depth of field
+    - Authentic skin texture, natural poses
+    - Professional advertising photography, photorealistic
+
+    PEOPLE:
+    - Real skin texture, natural poses, genuine expressions
+    - Expressions tied to the SPECIFIC MOMENT of benefit
+    - Diverse, relatable to target audience
+
+    === OUTPUT FORMAT ===
+    Return valid JSON only:
+    {
+      "prompts": [
+        {
+          "prompt": "Full image prompt including scene description AND text instructions. Example: 'A Kenyan business owner relaxed at home while her phone shows handled notifications... Shot on Sony A7IV. TEXT IN IMAGE: Display on the left side - Headline: \"Never Miss A Lead\" in bold white (#FFFFFF) sans-serif. Subtext: \"AI answers calls 24/7\" in smaller white text below.'",
+          "aspect_ratio": "landscape",
+          "width": 1024,
+          "height": 768,
+          "use_case": "Google Display Ad - Leaderboard",
+          "story_being_told": "what product benefit this communicates",
+          "text_in_image": {
+            "headline": "Never Miss A Lead",
+            "description": "AI answers your calls 24/7 so you never lose a customer",
+            "position": "left",
+            "text_color": "#FFFFFF",
+            "background_in_text_zone": "dark blurred wall"
+          }
+        },
+        {
+          "prompt": "Full image prompt with TEXT IN IMAGE instructions embedded...",
+          "aspect_ratio": "square",
+          "width": 1024,
+          "height": 1024,
+          "use_case": "Google Display Ad - Square",
+          "story_being_told": "what product benefit this communicates",
+          "text_in_image": {
+            "headline": "Sleep. We Answer.",
+            "description": "Your AI assistant handles customer calls while you rest",
+            "position": "bottom",
+            "text_color": "#FFFFFF",
+            "background_in_text_zone": "dark bedroom shadows"
+          }
+        },
+        {
+          "prompt": "Full image prompt with TEXT IN IMAGE instructions embedded...",
+          "aspect_ratio": "portrait",
+          "width": 768,
+          "height": 1024,
+          "use_case": "Google Display Ad - Portrait",
+          "story_being_told": "what product benefit this communicates",
+          "text_in_image": {
+            "headline": "AI That Never Sleeps",
+            "description": "Capture every lead with 24/7 AI-powered responses",
+            "position": "top",
+            "text_color": "#FFFFFF",
+            "background_in_text_zone": "soft morning sky"
+          }
+        },
+        {
+          "prompt": "Full image prompt with TEXT IN IMAGE instructions embedded...",
+          "aspect_ratio": "landscape",
+          "width": 1024,
+          "height": 768,
+          "use_case": "Google Display Ad - Leaderboard alternate",
+          "story_being_told": "what product benefit this communicates",
+          "text_in_image": {
+            "headline": "Be Present. Not On-Call.",
+            "description": "AI handles inquiries while you focus on what matters",
+            "position": "right",
+            "text_color": "#1a1a1a",
+            "background_in_text_zone": "bright window light, soft white wall"
+          }
+        }
+      ]
+    }
+
+    === EXAMPLE COMPLETE PROMPT ===
+
+    "A Kenyan restaurant owner in her 40s playing with her young daughter in the RIGHT SIDE of the frame. She's relaxed and present, laughing genuinely. In the mid-ground on a coffee table, her phone shows handled call notifications. LEFT THIRD of the image is a soft-focus cream living room wall with warm morning light, providing clean space for text. Warm morning light through curtains. Shot on Sony A7IV with 35mm f/1.8, shallow depth of field. Documentary family photography, authentic moment, photorealistic.
+
+    TEXT IN IMAGE: Display on the left third of the image:
+    - Headline: \"Be Present. Not On-Call.\" in bold dark gray (#1a1a1a) modern sans-serif font, large size
+    - Subtext: \"AI handles your calls while you enjoy life\" in medium gray (#4a4a4a), smaller clean sans-serif below the headline
+    Text should be professional, elegant, and readable against the soft cream wall background."
+
+    Generate 4 prompts now for #{company_name}. Each prompt must:
+    1. Visually communicate: #{one_liner}
+    2. Have clear space for text with simple background
+    3. Include TEXT IN IMAGE instructions with exact headline and description
+    4. Specify text color, position, and typography style
     """
   end
 
@@ -776,21 +946,22 @@ defmodule Launchkit.Assets do
     {:ok, images}
   end
 
-  defp generate_single_image(prompt_data) do
-    # Using OpenAI DALL-E 3
+  def generate_single_image(prompt_data) do
     api_key = Launchkit.OpenAI.get_api_key()
 
     if is_nil(api_key) do
       {:error, :missing_api_key}
     else
       size = dalle_size(prompt_data["aspect_ratio"])
+      enhanced_prompt = enhance_prompt_for_realism(prompt_data["prompt"])
 
       body = %{
         "model" => "dall-e-3",
-        "prompt" => prompt_data["prompt"],
+        "prompt" => enhanced_prompt,
         "n" => 1,
         "size" => size,
-        "quality" => "standard"
+        "quality" => "hd",
+        "style" => "natural"
       }
 
       headers = [
@@ -801,10 +972,10 @@ defmodule Launchkit.Assets do
       case Req.post("https://api.openai.com/v1/images/generations",
              headers: headers,
              json: body,
-             receive_timeout: 120_000
+             receive_timeout: 120_000,
+             max_retries: 5
            ) do
         {:ok, %{status: 200, body: %{"data" => [%{"url" => temp_url} | _]}}} ->
-          # Download and save the image locally
           case download_and_save_image(temp_url) do
             {:ok, local_url, storage_path} ->
               {:ok,
@@ -820,7 +991,7 @@ defmodule Launchkit.Assets do
 
             {:error, reason} ->
               Logger.error("Failed to download image: #{inspect(reason)}")
-              # Fallback to original URL if download fails
+
               {:ok,
                %{
                  url: temp_url,
@@ -842,6 +1013,16 @@ defmodule Launchkit.Assets do
           {:error, reason}
       end
     end
+  end
+
+  defp enhance_prompt_for_realism(prompt) do
+    """
+    #{prompt}
+
+    CRITICAL PHOTOGRAPHY REQUIREMENTS: This must look like a real photograph taken by a professional photographer for a magazine advertisement. Shot on Sony A7IV with natural prime lens (35mm or 50mm f/1.8), available light from real sources (windows, practical lamps), authentic skin with visible pores and texture, natural fabric wrinkles on clothing, real environment with slight imperfections and lived-in details. Color grading similar to Kodak Portra 400 film—slightly muted, not oversaturated.
+
+    THIS IMAGE MUST NOT CONTAIN: Holographic displays, floating UI elements, glowing screens, neon lighting, sci-fi interfaces, futuristic technology, CGI elements, 3D renders, plastic-looking skin, overly perfect environments, staged poses, stock photo aesthetic, anything that looks computer generated.
+    """
   end
 
   # DALL-E 3 only supports specific sizes

@@ -58,6 +58,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
       |> assign(:generating_blog, false)
       |> assign(:selected_blog_topic, nil)
       |> assign(:generated_blog, nil)
+      |> assign(:export_tab, :headlines)
 
     # Check for existing website or start analysis if URL provided
     if url && url != "" do
@@ -119,6 +120,26 @@ defmodule LaunchkitWeb.DashboardLive.New do
               default_step
             end
 
+          # Load persisted AI visibility if present
+          ai_visibility_assigns =
+            case Campaigns.get_ai_visibility_by_website(website_id) do
+              nil ->
+                [
+                  ai_visibility: nil,
+                  blog_topics: [],
+                  generated_blog: nil
+                ]
+
+              record ->
+                [
+                  ai_visibility: record.visibility_data || nil,
+                  blog_topics: record.blog_topics || [],
+                  generated_blog: record.generated_blog
+                ]
+            end
+
+          ai_visibility_assigns = Keyword.put(ai_visibility_assigns, :export_tab, :headlines)
+
           socket =
             socket
             |> assign(:analysis, analysis)
@@ -128,12 +149,10 @@ defmodule LaunchkitWeb.DashboardLive.New do
             |> assign(:descriptions, descriptions)
             |> assign(:images, images)
             |> assign(:current_step, current_step)
-            |> assign(:ai_visibility, nil)
             |> assign(:analyzing_visibility, false)
-            |> assign(:blog_topics, [])
             |> assign(:generating_blog, false)
             |> assign(:selected_blog_topic, nil)
-            |> assign(:generated_blog, nil)
+            |> assign(ai_visibility_assigns)
 
           # Scroll to top if we're loading a specific step from URL
           socket = if step_param, do: push_event(socket, "scroll-to-top", %{}), else: socket
@@ -156,18 +175,23 @@ defmodule LaunchkitWeb.DashboardLive.New do
 
   def render(assigns) do
     ~H"""
-    <div class="min-h-screen bg-[#fafaf9] font-['Outfit',sans-serif]">
+    <div class="min-h-screen bg-[#fafaf9] font-sans antialiased">
       <!-- Header -->
-      <header class="border-b border-[#e5e5e5] bg-white">
-        <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <.link navigate={~p"/"} class="flex items-center gap-2">
+      <header class="bg-white">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-2">
+          <.link navigate={~p"/"} class="flex items-center gap-2 flex-shrink-0">
             <span class="text-xl font-semibold tracking-tight">
-              <img src="/images/small.png" alt="LaunchKit" class="w-12 h-12" />
+              <img src="/images/small.png" alt="LaunchKit" class="w-10 h-10 sm:w-12 sm:h-12" />
             </span>
           </.link>
           
     <!-- Progress Steps -->
-          <div class="hidden md:flex items-center gap-2">
+          <div class="md:hidden text-sm text-[#525252]">
+            <span class="font-medium text-[#0d0d0d]">{step_label(@current_step)}</span>
+            <span class="mx-1">·</span>
+            <span>{Enum.find_index(@steps, &(&1 == @current_step)) + 1} of {length(@steps)}</span>
+          </div>
+          <div class="hidden md:flex items-center gap-2 flex-wrap justify-center min-w-0">
             <%= for {step, idx} <- Enum.with_index(@steps) do %>
               <div class={[
                 "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm",
@@ -180,7 +204,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
                 <span class="w-5 h-5 rounded-full bg-current/20 flex items-center justify-center text-xs">
                   {idx + 1}
                 </span>
-                <span class="capitalize">{step}</span>
+                <span>{step_label(step)}</span>
               </div>
               <%= if idx < length(@steps) - 1 do %>
                 <div class="w-8 h-px bg-[#e5e5e5]"></div>
@@ -188,14 +212,14 @@ defmodule LaunchkitWeb.DashboardLive.New do
             <% end %>
           </div>
 
-          <div class="text-sm text-[#525252]">
+          <div class="text-sm text-[#525252] truncate max-w-[140px] sm:max-w-none" title={if @url, do: @url, else: ""}>
             {if @url, do: URI.parse(@url).host, else: "No URL"}
           </div>
         </div>
       </header>
       
     <!-- Main Content -->
-      <main class="max-w-6xl mx-auto px-6 py-8" phx-hook="ScrollToTop" id="main-content">
+      <main class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8" phx-hook="ScrollToTop" id="main-content">
         <%= case @current_step do %>
           <% :analyzing -> %>
             <.analyzing_step url={@url} error={@error} />
@@ -215,10 +239,14 @@ defmodule LaunchkitWeb.DashboardLive.New do
           <% :export -> %>
             <.export_step
               url={@url}
+              export_tab={@export_tab}
               headlines={@headlines}
               long_headlines={@long_headlines}
               descriptions={@descriptions}
               images={@images}
+              blog_topics={@blog_topics}
+              generated_blog={@generated_blog}
+              ai_visibility={@ai_visibility}
             />
           <% :ai_visibility -> %>
             <.ai_visibility_step
@@ -902,8 +930,8 @@ defmodule LaunchkitWeb.DashboardLive.New do
 
   defp generate_step(assigns) do
     ~H"""
-    <div>
-      <div class="text-center mb-8">
+    <div class="px-2 sm:px-0">
+      <div class="text-center mb-6 sm:mb-8">
         <h1 class="text-3xl font-semibold mb-2">Generate Your Assets</h1>
         <p class="text-[#525252]">Generate headlines and images for your campaign.</p>
       </div>
@@ -923,13 +951,13 @@ defmodule LaunchkitWeb.DashboardLive.New do
       </div>
       
     <!-- Tabs -->
-      <div class="flex justify-center mb-10">
-        <div class="inline-flex bg-gray-100 rounded-lg p-1.5 gap-1">
+      <div class="flex justify-center mb-6 sm:mb-10 overflow-x-auto">
+        <div class="inline-flex bg-gray-100 rounded-lg p-1.5 gap-1 flex-shrink-0">
           <button
             phx-click="switch_tab"
             phx-value-tab="headlines"
             class={[
-              "px-6 py-2.5 rounded-md text-sm font-medium transition-all",
+              "px-4 sm:px-6 py-2.5 rounded-md text-sm font-medium transition-all",
               @active_tab == :headlines && "bg-white text-gray-900 shadow-sm",
               @active_tab != :headlines && "text-gray-600 hover:text-gray-900"
             ]}
@@ -940,7 +968,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
             phx-click="switch_tab"
             phx-value-tab="images"
             class={[
-              "px-6 py-2.5 rounded-md text-sm font-medium transition-all",
+              "px-4 sm:px-6 py-2.5 rounded-md text-sm font-medium transition-all",
               @active_tab == :images && "bg-white text-gray-900 shadow-sm",
               @active_tab != :images && "text-gray-600 hover:text-gray-900"
             ]}
@@ -966,7 +994,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
       
     <!-- Continue to Export -->
       <%= if has_assets?(@headlines, @images) do %>
-        <div class="flex justify-center gap-4 mt-8">
+        <div class="flex flex-wrap justify-center gap-3 sm:gap-4 mt-6 sm:mt-8">
           <button
             phx-click="go_to_step"
             phx-value-step="review"
@@ -1265,9 +1293,9 @@ defmodule LaunchkitWeb.DashboardLive.New do
 
   defp images_tab(assigns) do
     ~H"""
-    <div class="max-w-6xl mx-auto">
+    <div class="max-w-5xl mx-auto px-2 sm:px-0">
       <!-- Generate Button -->
-      <div class="flex justify-center mb-10">
+      <div class="flex justify-center mb-6">
         <button
           phx-click="generate_images"
           disabled={@generating}
@@ -1309,12 +1337,16 @@ defmodule LaunchkitWeb.DashboardLive.New do
       </div>
 
       <%= if @images != [] do %>
-        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
           <%= for image <- @images do %>
             <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow group">
-              <div class="aspect-video bg-gray-100 relative overflow-hidden">
+              <div class={["bg-gray-100 relative overflow-hidden min-h-0", aspect_ratio_class(image.aspect_ratio)]}>
                 <%= if image.status == :completed do %>
-                  <img src={image.url} alt={image.prompt} class="w-full h-full object-cover" />
+                  <img
+                    src={image.url}
+                    alt={image.prompt}
+                    class="w-full h-full object-cover object-center"
+                  />
                 <% else %>
                   <div class="absolute inset-0 flex items-center justify-center bg-gray-50">
                     <div class="text-center">
@@ -1344,15 +1376,15 @@ defmodule LaunchkitWeb.DashboardLive.New do
                   </div>
                 <% end %>
               </div>
-              <div class="p-4 border-t border-gray-100">
-                <p class="text-sm text-gray-700 truncate font-medium mb-1">{image.prompt}</p>
-                <p class="text-xs text-gray-500">{image.aspect_ratio}</p>
+              <div class="p-3 border-t border-gray-100">
+                <p class="text-sm text-gray-700 truncate font-medium">{image.prompt}</p>
+                <p class="text-xs text-gray-500 mt-0.5">{image.aspect_ratio}</p>
               </div>
             </div>
           <% end %>
         </div>
       <% else %>
-        <div class="text-center py-20 text-gray-400">
+        <div class="text-center py-12 text-gray-400">
           <svg
             class="w-12 h-12 mx-auto mb-4 opacity-50"
             fill="none"
@@ -1378,7 +1410,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
     assigns = assign(assigns, :share_url, get_share_url(url))
 
     ~H"""
-    <div class="max-w-4xl mx-auto">
+    <div class="max-w-4xl mx-auto px-2 sm:px-0">
       <!-- Back Button -->
       <div class="mb-6">
         <button
@@ -1395,10 +1427,14 @@ defmodule LaunchkitWeb.DashboardLive.New do
 
       <.assets_export_tab
         share_url={@share_url}
+        export_tab={@export_tab}
         images={@images}
         headlines={@headlines}
         long_headlines={@long_headlines}
         descriptions={@descriptions}
+        blog_topics={@blog_topics}
+        generated_blog={@generated_blog}
+        ai_visibility={@ai_visibility}
       />
     </div>
     """
@@ -1406,18 +1442,28 @@ defmodule LaunchkitWeb.DashboardLive.New do
 
   defp ai_visibility_step(assigns) do
     ~H"""
-    <div class="max-w-4xl mx-auto">
-      <!-- Back Button -->
-      <div class="mb-6">
+    <div class="max-w-4xl mx-auto px-2 sm:px-0">
+      <!-- Back Buttons -->
+      <div class="mb-6 flex flex-wrap items-center gap-3">
+        <button
+          phx-click="go_to_step"
+          phx-value-step="generate"
+          class="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+        >
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+          </svg>
+          Back to Generate
+        </button>
         <button
           phx-click="go_to_step"
           phx-value-step="export"
           class="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
         >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
           </svg>
-          Back to Export
+          Go to Export
         </button>
       </div>
 
@@ -1433,7 +1479,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
       />
       
     <!-- Continue to Export -->
-      <div class="flex justify-center mt-8">
+      <div class="flex flex-wrap justify-center gap-3 sm:gap-4 mt-6 sm:mt-8">
         <button
           phx-click="go_to_step"
           phx-value-step="export"
@@ -1457,7 +1503,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
     ~H"""
     <div>
       <!-- Share Link Section -->
-      <div class="bg-white border border-gray-200 rounded-xl p-6 mb-8 shadow-sm">
+      <div class="bg-white border border-gray-200 rounded-xl p-6 mb-6 shadow-sm">
         <h2 class="text-lg font-semibold text-gray-900 mb-3">Share This Page</h2>
         <div class="flex items-center gap-3">
           <input
@@ -1492,195 +1538,281 @@ defmodule LaunchkitWeb.DashboardLive.New do
           </button>
         </div>
       </div>
-      
-    <!-- Images Section -->
-      <%= if @images != [] do %>
-        <div class="bg-white border border-gray-200 rounded-xl p-6 mb-8 shadow-sm">
-          <h2 class="text-lg font-semibold text-gray-900 mb-4">Images</h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <%= for image <- @images do %>
-              <div class="border border-gray-200 rounded-lg overflow-hidden">
-                <div class="aspect-video bg-gray-100 relative">
-                  <%= if image.status == :completed do %>
-                    <img src={image.url} alt="Generated image" class="w-full h-full object-cover" />
-                  <% else %>
-                    <div class="absolute inset-0 flex items-center justify-center bg-gray-100">
-                      <div class="text-center text-gray-400">
-                        <svg class="w-8 h-8 mx-auto mb-2 animate-spin" fill="none" viewBox="0 0 24 24">
-                          <circle
-                            class="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            stroke-width="4"
-                          >
-                          </circle>
-                          <path
-                            class="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                          >
-                          </path>
-                        </svg>
-                        <p class="text-xs">Generating...</p>
-                      </div>
-                    </div>
-                  <% end %>
-                </div>
-                <div class="p-3 bg-white flex items-center justify-between">
-                  <span class="text-xs text-gray-500">{image.aspect_ratio || "N/A"}</span>
-                  <%= if image.status == :completed do %>
-                    <a
-                      href={image.url}
-                      download
-                      class="px-3 py-1.5 bg-gray-900 text-white text-xs font-medium rounded hover:bg-gray-800 transition-colors flex items-center gap-1.5"
-                    >
-                      <svg
-                        class="w-3.5 h-3.5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        stroke-width="2"
+
+      <!-- Report Tabs -->
+      <div class="flex justify-center mb-6">
+        <div class="inline-flex bg-gray-100 rounded-lg p-1.5 gap-1">
+          <button
+            phx-click="set_export_tab"
+            phx-value-tab="headlines"
+            class={[
+              "px-5 py-2.5 rounded-md text-sm font-medium transition-all",
+              @export_tab == :headlines && "bg-white text-gray-900 shadow-sm",
+              @export_tab != :headlines && "text-gray-600 hover:text-gray-900"
+            ]}
+          >
+            Headlines
+          </button>
+          <button
+            phx-click="set_export_tab"
+            phx-value-tab="images"
+            class={[
+              "px-5 py-2.5 rounded-md text-sm font-medium transition-all",
+              @export_tab == :images && "bg-white text-gray-900 shadow-sm",
+              @export_tab != :images && "text-gray-600 hover:text-gray-900"
+            ]}
+          >
+            Images
+          </button>
+          <button
+            phx-click="set_export_tab"
+            phx-value-tab="ai_visibility"
+            class={[
+              "px-5 py-2.5 rounded-md text-sm font-medium transition-all",
+              @export_tab == :ai_visibility && "bg-white text-gray-900 shadow-sm",
+              @export_tab != :ai_visibility && "text-gray-600 hover:text-gray-900"
+            ]}
+          >
+            AI Visibility
+          </button>
+        </div>
+      </div>
+
+      <!-- Tab Content -->
+      <%= case @export_tab do %>
+        <% :headlines -> %>
+          <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+            <h2 class="text-lg font-semibold text-gray-900 mb-6">Headlines & Descriptions</h2>
+            <%= if @headlines != [] do %>
+              <div class="mb-6">
+                <h3 class="text-sm font-medium text-gray-700 mb-3">Short Headlines</h3>
+                <div class="space-y-2">
+                  <%= for {headline, idx} <- Enum.with_index(@headlines) do %>
+                    <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group">
+                      <span class="text-xs font-medium text-gray-400 w-6 flex-shrink-0">{idx + 1}</span>
+                      <span class="flex-1 text-sm text-gray-900">{headline.text}</span>
+                      <button
+                        id={"export-copy-headline-#{idx}"}
+                        phx-click="copy_text"
+                        phx-value-text={headline.text}
+                        phx-hook="CopyToClipboard"
+                        class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+                        title="Copy to clipboard"
                       >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
-                        />
-                      </svg>
-                      Download
-                    </a>
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" /></svg>
+                        Copy
+                      </button>
+                    </div>
                   <% end %>
                 </div>
               </div>
             <% end %>
+            <%= if @long_headlines != [] do %>
+              <div class="mb-6">
+                <h3 class="text-sm font-medium text-gray-700 mb-3">Long Headlines</h3>
+                <div class="space-y-2">
+                  <%= for {headline, idx} <- Enum.with_index(@long_headlines) do %>
+                    <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group">
+                      <span class="text-xs font-medium text-gray-400 w-6 flex-shrink-0">{idx + 1}</span>
+                      <span class="flex-1 text-sm text-gray-900">{headline.text}</span>
+                      <button
+                        id={"export-copy-long-headline-#{idx}"}
+                        phx-click="copy_text"
+                        phx-value-text={headline.text}
+                        phx-hook="CopyToClipboard"
+                        class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+                        title="Copy to clipboard"
+                      >
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" /></svg>
+                        Copy
+                      </button>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+            <%= if @descriptions != [] do %>
+              <div>
+                <h3 class="text-sm font-medium text-gray-700 mb-3">Descriptions</h3>
+                <div class="space-y-2">
+                  <%= for {desc, idx} <- Enum.with_index(@descriptions) do %>
+                    <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group">
+                      <span class="text-xs font-medium text-gray-400 w-6 flex-shrink-0 pt-1">{idx + 1}</span>
+                      <p class="flex-1 text-sm text-gray-900">{desc.text}</p>
+                      <button
+                        id={"export-copy-description-#{idx}"}
+                        phx-click="copy_text"
+                        phx-value-text={desc.text}
+                        phx-hook="CopyToClipboard"
+                        class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-50 transition-colors flex items-center gap-1.5 flex-shrink-0"
+                        title="Copy to clipboard"
+                      >
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" /></svg>
+                        Copy
+                      </button>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+            <%= if @headlines == [] && @long_headlines == [] && @descriptions == [] do %>
+              <p class="text-sm text-gray-500">No headlines or descriptions yet. Generate assets in the Generate step.</p>
+            <% end %>
           </div>
-        </div>
+
+        <% :images -> %>
+          <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Images</h2>
+            <%= if @images != [] do %>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <%= for image <- @images do %>
+                  <div class="border border-gray-200 rounded-lg overflow-hidden">
+                    <div class="aspect-video bg-gray-100 relative">
+                      <%= if image.status == :completed do %>
+                        <img src={image.url} alt="Generated image" class="w-full h-full object-cover" />
+                      <% else %>
+                        <div class="absolute inset-0 flex items-center justify-center bg-gray-100">
+                          <div class="text-center text-gray-400">
+                            <svg class="w-8 h-8 mx-auto mb-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                            </svg>
+                            <p class="text-xs">Generating...</p>
+                          </div>
+                        </div>
+                      <% end %>
+                    </div>
+                    <div class="p-3 bg-white flex items-center justify-between">
+                      <span class="text-xs text-gray-500">{image.aspect_ratio || "N/A"}</span>
+                      <%= if image.status == :completed do %>
+                        <a href={image.url} download class="px-3 py-1.5 bg-gray-900 text-white text-xs font-medium rounded hover:bg-gray-800 transition-colors flex items-center gap-1.5">
+                          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                          Download
+                        </a>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            <% else %>
+              <p class="text-sm text-gray-500">No images yet. Generate images in the Generate step.</p>
+            <% end %>
+          </div>
+
+        <% :ai_visibility -> %>
+          <div class="space-y-6">
+            <div class="flex items-center justify-between">
+              <h2 class="text-lg font-semibold text-gray-900">AI Visibility</h2>
+              <button
+                type="button"
+                phx-click="go_to_step"
+                phx-value-step="ai_visibility"
+                class="text-sm font-medium text-emerald-600 hover:text-emerald-700 flex items-center gap-1.5"
+              >
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                Go to AI Visibility
+              </button>
+            </div>
+
+            <%= if @ai_visibility != nil do %>
+              <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                <h3 class="text-base font-semibold text-gray-900 mb-4">Score & Recommendations</h3>
+                <div class="text-center mb-6">
+                  <% overall = Map.get(@ai_visibility, "overall_score") || @ai_visibility[:overall_score] || @ai_visibility.overall_score %>
+                  <div class="inline-flex items-center justify-center w-24 h-24 rounded-full border-6 border-gray-100 mb-3" style={"border-color: #{get_score_color(overall)}"}>
+                    <div class="text-3xl font-bold" style={"color: #{get_score_color(overall)}"}>{overall}</div>
+                  </div>
+                  <p class="text-sm text-gray-600">{get_score_label(overall)}</p>
+                </div>
+                <% scores = Map.get(@ai_visibility, "scores") || @ai_visibility[:scores] || @ai_visibility.scores %>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                  <div class="text-center p-3 bg-gray-50 rounded-lg"><div class="text-xl font-semibold text-gray-900">{Map.get(scores, "presence") || scores[:presence] || scores.presence}</div><div class="text-xs text-gray-600">Presence</div></div>
+                  <div class="text-center p-3 bg-gray-50 rounded-lg"><div class="text-xl font-semibold text-gray-900">{Map.get(scores, "completeness") || scores[:completeness] || scores.completeness}</div><div class="text-xs text-gray-600">Completeness</div></div>
+                  <div class="text-center p-3 bg-gray-50 rounded-lg"><div class="text-xl font-semibold text-gray-900">{Map.get(scores, "recency") || scores[:recency] || scores.recency}</div><div class="text-xs text-gray-600">Recency</div></div>
+                  <div class="text-center p-3 bg-gray-50 rounded-lg"><div class="text-xl font-semibold text-gray-900">{Map.get(scores, "authority") || scores[:authority] || scores.authority}</div><div class="text-xs text-gray-600">Authority</div></div>
+                </div>
+                <%= if recommendations = Map.get(@ai_visibility, "recommendations") || @ai_visibility[:recommendations] || @ai_visibility.recommendations do %>
+                  <%= if priority = Map.get(recommendations, "priority_recommendations") || Map.get(recommendations, :priority_recommendations) do %>
+                    <h4 class="font-medium text-gray-900 mb-2">Priority Recommendations</h4>
+                    <div class="space-y-3 mb-4">
+                      <%= for rec <- priority do %>
+                        <div class="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                          <div class="flex items-start justify-between gap-2 mb-1">
+                            <h5 class="font-medium text-gray-900">{rec["title"] || rec[:title]}</h5>
+                            <span class={"px-2 py-0.5 text-xs font-medium rounded #{get_impact_class(rec["impact"] || rec[:impact])}"}>{rec["impact"] || rec[:impact]} impact</span>
+                          </div>
+                          <p class="text-sm text-gray-600">{rec["description"] || rec[:description]}</p>
+                        </div>
+                      <% end %>
+                    </div>
+                  <% end %>
+                  <%= if quick_wins = Map.get(recommendations, "quick_wins") || Map.get(recommendations, :quick_wins) do %>
+                    <h4 class="font-medium text-gray-900 mb-2">Quick Wins</h4>
+                    <ul class="space-y-1.5 text-sm text-gray-600">
+                      <%= for win <- quick_wins do %>
+                        <li class="flex items-start gap-2">
+                          <svg class="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                          <span>{win}</span>
+                        </li>
+                      <% end %>
+                    </ul>
+                  <% end %>
+                <% end %>
+              </div>
+            <% end %>
+
+            <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+              <h3 class="text-base font-semibold text-gray-900 mb-4">Blog Topics & Generated Post</h3>
+              <%= if @blog_topics != [] do %>
+                <div class="space-y-3 mb-6">
+                  <%= for {topic, idx} <- Enum.with_index(@blog_topics) do %>
+                    <% topic_title = topic["title"] || topic[:title] || topic["topic"] || topic[:topic] || "Untitled Topic" %>
+                    <% topic_copy_text = export_blog_topic_copy_text(topic) %>
+                    <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group">
+                      <div class="flex-1 min-w-0">
+                        <h4 class="font-medium text-gray-900">{topic_title}</h4>
+                        <%= if desc = topic["description"] || topic[:description] do %><p class="text-sm text-gray-600 mt-1">{desc}</p><% end %>
+                        <%= if why = topic["why_it_helps"] || topic[:why_it_helps] || topic["reason"] || topic[:reason] do %><p class="text-xs text-gray-500 mt-1">{why}</p><% end %>
+                      </div>
+                      <button id={"export-copy-blog-topic-#{idx}"} phx-click="copy_text" phx-value-text={topic_copy_text} phx-hook="CopyToClipboard" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-50 flex-shrink-0" title="Copy topic">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" /></svg>
+                        Copy
+                      </button>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
+              <%= if @generated_blog != nil do %>
+                <div class="pt-4 border-t border-gray-200">
+                  <h4 class="font-medium text-gray-900 mb-2">Generated Blog Post</h4>
+                  <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div class="flex items-start justify-between gap-3 mb-3">
+                      <h5 class="font-semibold text-gray-900">{@generated_blog["title"] || @generated_blog[:title] || "Blog Post"}</h5>
+                      <button id="export-copy-blog-content" phx-click="copy_text" phx-value-text={@generated_blog["content"] || @generated_blog[:content] || ""} phx-hook="CopyToClipboard" class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-50 flex-shrink-0" title="Copy full post">Copy Post</button>
+                    </div>
+                    <div class="prose prose-sm max-w-none text-gray-700 text-sm line-clamp-4">{render_markdown(@generated_blog["content"] || @generated_blog[:content] || "")}</div>
+                    <%= if keywords = @generated_blog["keywords"] || @generated_blog[:keywords] do %><p class="text-xs text-gray-500 mt-2"><span class="font-medium">Keywords:</span> {Enum.join(keywords, ", ")}</p><% end %>
+                    <%= if meta = @generated_blog["meta_description"] || @generated_blog[:meta_description] do %><p class="text-xs text-gray-500 mt-1"><span class="font-medium">Meta:</span> {meta}</p><% end %>
+                  </div>
+                </div>
+              <% end %>
+              <%= if @blog_topics == [] && @generated_blog == nil do %>
+                <p class="text-sm text-gray-500">No blog topics or generated post yet. Use "Go to AI Visibility" to analyze and generate content.</p>
+              <% end %>
+            </div>
+          </div>
       <% end %>
-      
-    <!-- Headlines and Descriptions Section -->
-      <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-        <h2 class="text-lg font-semibold text-gray-900 mb-6">Headlines & Descriptions</h2>
-        
-    <!-- Short Headlines -->
-        <%= if @headlines != [] do %>
-          <div class="mb-6">
-            <h3 class="text-sm font-medium text-gray-700 mb-3">Short Headlines</h3>
-            <div class="space-y-2">
-              <%= for {headline, idx} <- Enum.with_index(@headlines) do %>
-                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group">
-                  <span class="text-xs font-medium text-gray-400 w-6 flex-shrink-0">{idx + 1}</span>
-                  <span class="flex-1 text-sm text-gray-900">{headline.text}</span>
-                  <button
-                    id={"export-copy-headline-#{idx}"}
-                    phx-click="copy_text"
-                    phx-value-text={headline.text}
-                    phx-hook="CopyToClipboard"
-                    class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-50 transition-colors flex items-center gap-1.5"
-                    title="Copy to clipboard"
-                  >
-                    <svg
-                      class="w-3.5 h-3.5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"
-                      />
-                    </svg>
-                    Copy
-                  </button>
-                </div>
-              <% end %>
-            </div>
-          </div>
-        <% end %>
-        
-    <!-- Long Headlines -->
-        <%= if @long_headlines != [] do %>
-          <div class="mb-6">
-            <h3 class="text-sm font-medium text-gray-700 mb-3">Long Headlines</h3>
-            <div class="space-y-2">
-              <%= for {headline, idx} <- Enum.with_index(@long_headlines) do %>
-                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group">
-                  <span class="text-xs font-medium text-gray-400 w-6 flex-shrink-0">{idx + 1}</span>
-                  <span class="flex-1 text-sm text-gray-900">{headline.text}</span>
-                  <button
-                    id={"export-copy-long-headline-#{idx}"}
-                    phx-click="copy_text"
-                    phx-value-text={headline.text}
-                    phx-hook="CopyToClipboard"
-                    class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-50 transition-colors flex items-center gap-1.5"
-                    title="Copy to clipboard"
-                  >
-                    <svg
-                      class="w-3.5 h-3.5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"
-                      />
-                    </svg>
-                    Copy
-                  </button>
-                </div>
-              <% end %>
-            </div>
-          </div>
-        <% end %>
-        
-    <!-- Descriptions -->
-        <%= if @descriptions != [] do %>
-          <div>
-            <h3 class="text-sm font-medium text-gray-700 mb-3">Descriptions</h3>
-            <div class="space-y-2">
-              <%= for {desc, idx} <- Enum.with_index(@descriptions) do %>
-                <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group">
-                  <span class="text-xs font-medium text-gray-400 w-6 flex-shrink-0 pt-1">
-                    {idx + 1}
-                  </span>
-                  <p class="flex-1 text-sm text-gray-900">{desc.text}</p>
-                  <button
-                    id={"export-copy-description-#{idx}"}
-                    phx-click="copy_text"
-                    phx-value-text={desc.text}
-                    phx-hook="CopyToClipboard"
-                    class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-50 transition-colors flex items-center gap-1.5 flex-shrink-0"
-                    title="Copy to clipboard"
-                  >
-                    <svg
-                      class="w-3.5 h-3.5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"
-                      />
-                    </svg>
-                    Copy
-                  </button>
-                </div>
-              <% end %>
-            </div>
-          </div>
-        <% end %>
-      </div>
     </div>
     """
+  end
+
+  defp export_blog_topic_copy_text(topic) do
+    title = topic["title"] || topic[:title] || topic["topic"] || topic[:topic] || "Untitled Topic"
+    desc = topic["description"] || topic[:description] || ""
+    why = topic["why_it_helps"] || topic[:why_it_helps] || topic["reason"] || topic[:reason] || ""
+    [title, desc, why]
+    |> Enum.filter(&(is_binary(&1) and String.trim(&1) != ""))
+    |> Enum.join("\n\n")
   end
 
   defp ai_visibility_tab(assigns) do
@@ -1689,9 +1821,9 @@ defmodule LaunchkitWeb.DashboardLive.New do
       <!-- Analyze Button -->
       <%= if @ai_visibility == nil do %>
         <div class="bg-white border border-gray-200 rounded-xl p-8 mb-8 shadow-sm text-center">
-          <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg
-              class="w-8 h-8 text-blue-600"
+              class="w-8 h-8 text-emerald-600"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -1714,7 +1846,7 @@ defmodule LaunchkitWeb.DashboardLive.New do
             class={[
               "px-8 py-3 rounded-lg font-medium transition-all flex items-center gap-2 mx-auto",
               @analyzing_visibility && "bg-gray-100 text-gray-400 cursor-not-allowed",
-              !@analyzing_visibility && "bg-blue-600 text-white hover:bg-blue-700 shadow-sm"
+              !@analyzing_visibility && "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
             ]}
           >
             <%= if @analyzing_visibility do %>
@@ -1782,50 +1914,51 @@ defmodule LaunchkitWeb.DashboardLive.New do
           </div>
           
     <!-- Overall Score -->
+          <% overall_score = Map.get(@ai_visibility, "overall_score") || @ai_visibility[:overall_score] || @ai_visibility.overall_score %>
           <div class="text-center mb-8">
             <div
               class="inline-flex items-center justify-center w-32 h-32 rounded-full border-8 border-gray-100 mb-4"
-              style={"border-color: #{get_score_color(@ai_visibility[:overall_score] || @ai_visibility.overall_score)}"}
+              style={"border-color: #{get_score_color(overall_score)}"}
             >
               <div class="text-center">
                 <div
                   class="text-4xl font-bold"
-                  style={"color: #{get_score_color(@ai_visibility[:overall_score] || @ai_visibility.overall_score)}"}
+                  style={"color: #{get_score_color(overall_score)}"}
                 >
-                  {@ai_visibility[:overall_score] || @ai_visibility.overall_score}
+                  {overall_score}
                 </div>
                 <div class="text-xs text-gray-500 mt-1">/ 100</div>
               </div>
             </div>
             <p class="text-sm text-gray-600">
-              {get_score_label(@ai_visibility[:overall_score] || @ai_visibility.overall_score)}
+              {get_score_label(overall_score)}
             </p>
           </div>
           
     <!-- Individual Scores -->
+          <% scores = Map.get(@ai_visibility, "scores") || @ai_visibility[:scores] || @ai_visibility.scores %>
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <% scores = @ai_visibility[:scores] || @ai_visibility.scores %>
             <div class="text-center p-4 bg-gray-50 rounded-lg">
               <div class="text-2xl font-semibold text-gray-900">
-                {scores[:presence] || scores.presence}
+                {Map.get(scores, "presence") || scores[:presence] || scores.presence}
               </div>
               <div class="text-xs text-gray-600 mt-1">Presence</div>
             </div>
             <div class="text-center p-4 bg-gray-50 rounded-lg">
               <div class="text-2xl font-semibold text-gray-900">
-                {scores[:completeness] || scores.completeness}
+                {Map.get(scores, "completeness") || scores[:completeness] || scores.completeness}
               </div>
               <div class="text-xs text-gray-600 mt-1">Completeness</div>
             </div>
             <div class="text-center p-4 bg-gray-50 rounded-lg">
               <div class="text-2xl font-semibold text-gray-900">
-                {scores[:recency] || scores.recency}
+                {Map.get(scores, "recency") || scores[:recency] || scores.recency}
               </div>
               <div class="text-xs text-gray-600 mt-1">Recency</div>
             </div>
             <div class="text-center p-4 bg-gray-50 rounded-lg">
               <div class="text-2xl font-semibold text-gray-900">
-                {scores[:authority] || scores.authority}
+                {Map.get(scores, "authority") || scores[:authority] || scores.authority}
               </div>
               <div class="text-xs text-gray-600 mt-1">Authority</div>
             </div>
@@ -1833,39 +1966,39 @@ defmodule LaunchkitWeb.DashboardLive.New do
         </div>
         
     <!-- Recommendations -->
-        <%= if recommendations = @ai_visibility.recommendations do %>
+        <%= if recommendations = Map.get(@ai_visibility, "recommendations") || @ai_visibility[:recommendations] || @ai_visibility.recommendations do %>
           <div class="bg-white border border-gray-200 rounded-xl p-6 mb-8 shadow-sm">
             <h3 class="text-lg font-semibold text-gray-900 mb-4">Recommendations</h3>
 
-            <%= if priority = Map.get(recommendations, "priority_recommendations") do %>
+            <%= if priority = Map.get(recommendations, "priority_recommendations") || Map.get(recommendations, :priority_recommendations) do %>
               <div class="space-y-4 mb-6">
                 <%= for rec <- priority do %>
                   <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
                     <div class="flex items-start justify-between mb-2">
-                      <h4 class="font-medium text-gray-900">{rec["title"]}</h4>
+                      <h4 class="font-medium text-gray-900">{rec["title"] || rec[:title]}</h4>
                       <div class="flex gap-2">
-                        <span class={"px-2 py-1 text-xs font-medium rounded #{get_impact_class(rec["impact"])}"}>
-                          {rec["impact"]} impact
+                        <span class={"px-2 py-1 text-xs font-medium rounded #{get_impact_class(rec["impact"] || rec[:impact])}"}>
+                          {rec["impact"] || rec[:impact]} impact
                         </span>
-                        <span class={"px-2 py-1 text-xs font-medium rounded #{get_effort_class(rec["effort"])}"}>
-                          {rec["effort"]} effort
+                        <span class={"px-2 py-1 text-xs font-medium rounded #{get_effort_class(rec["effort"] || rec[:effort])}"}>
+                          {rec["effort"] || rec[:effort]} effort
                         </span>
                       </div>
                     </div>
-                    <p class="text-sm text-gray-600">{rec["description"]}</p>
+                    <p class="text-sm text-gray-600">{rec["description"] || rec[:description]}</p>
                   </div>
                 <% end %>
               </div>
             <% end %>
 
-            <%= if quick_wins = Map.get(recommendations, "quick_wins") do %>
+            <%= if quick_wins = Map.get(recommendations, "quick_wins") || Map.get(recommendations, :quick_wins) do %>
               <div class="mb-6">
                 <h4 class="font-medium text-gray-900 mb-3">Quick Wins</h4>
                 <ul class="space-y-2">
                   <%= for win <- quick_wins do %>
                     <li class="flex items-start gap-2 text-sm text-gray-600">
                       <svg
-                        class="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5"
+                        class="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -2037,6 +2170,12 @@ defmodule LaunchkitWeb.DashboardLive.New do
     </div>
     """
   end
+
+  # Aspect ratio classes for images_tab (match DALL-E sizes: landscape 1792×1024, square 1024×1024, portrait 1024×1792)
+  defp aspect_ratio_class("landscape"), do: "aspect-[1792/1024]"
+  defp aspect_ratio_class("square"), do: "aspect-square"
+  defp aspect_ratio_class("portrait"), do: "aspect-[1024/1792]"
+  defp aspect_ratio_class(_), do: "aspect-video"
 
   # green
   defp get_score_color(score) when score >= 80, do: "#10b981"
@@ -2325,6 +2464,15 @@ defmodule LaunchkitWeb.DashboardLive.New do
     blog_topics =
       Map.get(recommendations, "blog_topics") || Map.get(recommendations, :blog_topics) || []
 
+    # Persist to database
+    website_id = socket.assigns[:website_id]
+    if website_id do
+      Campaigns.upsert_ai_visibility(website_id, %{
+        visibility_data: visibility_data,
+        blog_topics: blog_topics
+      })
+    end
+
     {:noreply,
      socket
      |> assign(:ai_visibility, visibility_data)
@@ -2340,6 +2488,11 @@ defmodule LaunchkitWeb.DashboardLive.New do
   end
 
   def handle_info({:blog_topics_generated, topics}, socket) do
+    website_id = socket.assigns[:website_id]
+    if website_id do
+      Campaigns.upsert_ai_visibility(website_id, %{blog_topics: topics})
+    end
+
     {:noreply,
      socket
      |> assign(:blog_topics, topics)
@@ -2354,6 +2507,11 @@ defmodule LaunchkitWeb.DashboardLive.New do
   end
 
   def handle_info({:blog_post_generated, blog_post}, socket) do
+    website_id = socket.assigns[:website_id]
+    if website_id do
+      Campaigns.upsert_ai_visibility(website_id, %{generated_blog: blog_post})
+    end
+
     {:noreply,
      socket
      |> assign(:generated_blog, blog_post)
@@ -2493,6 +2651,10 @@ defmodule LaunchkitWeb.DashboardLive.New do
 
   def handle_event("switch_tab", %{"tab" => tab}, socket) do
     {:noreply, assign(socket, :active_tab, String.to_existing_atom(tab))}
+  end
+
+  def handle_event("set_export_tab", %{"tab" => tab}, socket) do
+    {:noreply, assign(socket, :export_tab, String.to_existing_atom(tab))}
   end
 
   def handle_event("analyze_ai_visibility", _, socket) do
@@ -2732,6 +2894,16 @@ defmodule LaunchkitWeb.DashboardLive.New do
   # ============================================================================
   # HELPERS
   # ============================================================================
+
+  defp step_label(:ai_visibility), do: "AI Visibility"
+  defp step_label(step) do
+    step
+    |> Atom.to_string()
+    |> String.replace("_", " ")
+    |> String.split()
+    |> Enum.map(&String.capitalize/1)
+    |> Enum.join(" ")
+  end
 
   defp step_completed?(step, current_step, steps) do
     step_index = Enum.find_index(steps, &(&1 == step))

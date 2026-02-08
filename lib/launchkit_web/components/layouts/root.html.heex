@@ -4,9 +4,33 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content={get_csrf_token()} />
-    <.live_title default="Launchkit" suffix=" · Phoenix Framework">
+    <meta
+      name="description"
+      content="LaunchKit generates Google Ads headlines and copy, ad images, and your AI visibility score. Drop your website URL and get everything you need to run better campaigns."
+    />
+    <link rel="canonical" href="https://launchkit.info/" />
+    <link rel="icon" type="image/png" href="/images/small.png" />
+    <.live_title default="LaunchKit" suffix=" · launchkit.info">
       {assigns[:page_title]}
     </.live_title>
+    <meta property="og:title" content="LaunchKit · Google Ads Headlines, Copy & AI Visibility" />
+    <meta
+      property="og:description"
+      content="Get Google Ads headlines and copy, generated ad images, and your AI visibility score. Just paste your website URL."
+    />
+    <meta property="og:url" content="https://launchkit.info/" />
+    
+<!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-YK1FQ1EPE5">
+    </script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-YK1FQ1EPE5');
+    </script>
+    <meta property="og:type" content="website" />
     <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
     <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}>
     </script>
