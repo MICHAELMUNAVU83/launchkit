@@ -19,6 +19,8 @@ defmodule LaunchkitWeb.Router do
 
     live "/", HomeLive.Index, :index
     live "/dashboard/new", DashboardLive.New
+    live "/websites", WebsitesLive.Index, :index
+    live "/websites/:id", WebsitesLive.Show, :show
   end
 
   # Other scopes may use custom stacks.
